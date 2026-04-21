@@ -14,7 +14,7 @@
     
     <groupId>com.claude</groupId>
     <artifactId>claude-web</artifactId>
-    <version>1.01</version>
+    <version>1.02</version>
     <name>claude-web</name>
     <description>Claude Agent Web 界面 - Spring Boot 实现</description>
     

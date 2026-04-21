@@ -3,7 +3,7 @@
 # claude-web 启动脚本（仅连接 Claude Agent）
 
 # 默认配置
-JAR_FILE="target/claude-web-1.01.jar"
+JAR_FILE="target/claude-web-1.02.jar"
 PID_FILE="/tmp/claude-web.pid"
 LOG_FILE="/tmp/claude-web.log"
 

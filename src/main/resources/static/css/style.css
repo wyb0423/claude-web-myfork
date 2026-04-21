@@ -94,8 +94,8 @@
     .home-hero { font-size: 2.5rem; font-weight: 300; color: #1e40af; }
     .home-divider { width: 100%; max-width: 680px; border: none; border-top: 1px solid #e2e8f0; margin: 0; }
     .home-view .composer { border-top: none; margin-top: -10px; }
-    .home-view .composer-send { margin-top: 9px; }
-    .conversation-root .composer-send { margin-bottom: 7px; }
+    .home-view .composer-send { margin-top: 3px; }
+    .conversation-root .composer-send { margin-bottom: 2px; }
 
 
     .conversation-root { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -193,6 +193,7 @@
     .request-meta { font-size: .8rem; color: #94a3b8; margin-bottom: .75rem; }
     .request-reason { font-size: .9rem; color: #374151; margin-bottom: .75rem; }
     .request-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .auto-allow-timer { font-weight: 600; margin-left: .25rem; font-size: 1.1rem; }
     .request-question { margin: .75rem 0; padding: .75rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
     .request-question-title { font-weight: 500; margin-bottom: .25rem; color: #1f2937; }
     .request-question-text { font-size: .85rem; color: #64748b; margin-bottom: .5rem; }
@@ -208,17 +209,17 @@
 
     .composer {
       display: flex; align-items: flex-start; justify-content: center; gap: .5rem; width: 100%;
-      padding: .75rem 1rem; border-top: 1px solid #e2e8f0; background: #ffffff; min-height: 64px;
+      padding: .5rem 1rem .9rem 1rem; border-top: 1px solid #e2e8f0; background: #ffffff; min-height: 42px;
     }
     .conversation-root .composer {
       align-items: flex-end;
     }
     .composer-box {
       display: flex; align-items: flex-end; width: 100%; max-width: 600px;
-      padding: .5rem; border: 1px solid #cbd5e1; border-radius: 12px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      padding: 12px 8px 8px 8px; border: 1px solid #cbd5e1; border-radius: 12px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     .composer-textarea {
-      flex: 1; min-height: 24px; max-height: 200px; padding: .5rem .75rem; border: none; background: transparent; color: #1f2937; font-size: .9375rem; outline: none; resize: none; overflow-y: auto;
+      flex: 1; min-height: 24px; max-height: 200px; padding: 0 .75rem; border: none; background: transparent; color: #1f2937; font-size: 14px; outline: none; resize: none; overflow-y: auto;
     }
     .composer-send { padding: .5rem 1rem; border-radius: 8px; }
 

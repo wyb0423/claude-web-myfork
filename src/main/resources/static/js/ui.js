@@ -92,6 +92,31 @@
         state.pendingRequests = state.pendingRequests.filter(r => r.id !== id);
         renderConversation();
       }
+      function clearAutoAllowTimer() {
+        if (state.autoAllowTimer) { clearInterval(state.autoAllowTimer); state.autoAllowTimer = null; }
+        state.autoAllowRequestId = null;
+        state.autoAllowSeconds = 10;
+      }
+      function updateAutoAllowDisplay(seconds) {
+        const span = document.querySelector('.auto-allow-timer');
+        if (span) span.textContent = String(seconds);
+      }
+      function startAutoAllowTimer(id, method) {
+        clearAutoAllowTimer();
+        state.autoAllowRequestId = id;
+        state.autoAllowSeconds = 10;
+        updateAutoAllowDisplay(10);
+        state.autoAllowTimer = setInterval(() => {
+          state.autoAllowSeconds--;
+          updateAutoAllowDisplay(state.autoAllowSeconds);
+          if (state.autoAllowSeconds <= 0) {
+            clearAutoAllowTimer();
+            if (method === 'approval') respondApproval(id, 'accept');
+            else if (method === 'tool') respondToolAllow(id);
+            else if (method === 'empty') respondEmpty(id);
+          }
+        }, 1000);
+      }
       function renderSidebar() {
         const tree = els.threadTree;
         if (state.isLoadingThreads && state.projectGroups.length === 0) {
@@ -209,6 +234,21 @@
         const wasNearBottom = list.scrollHeight - list.scrollTop <= list.clientHeight + 40;
         list.innerHTML = html;
         if (wasNearBottom) list.scrollTop = list.scrollHeight;
+        // Auto-allow countdown: start when a new pending request appears
+        const pending = requests[0];
+        if (pending) {
+          const autoMethod = (pending.method === 'item/commandExecution/requestApproval' || pending.method === 'item/fileChange/requestApproval') ? 'approval'
+            : (pending.method === 'item/tool/call') ? 'tool'
+            : (pending.method === 'item/tool/requestUserInput') ? null : 'empty';
+          if (autoMethod && state.autoAllowRequestId !== pending.id) {
+            startAutoAllowTimer(pending.id, autoMethod);
+          } else if (autoMethod && state.autoAllowTimer) {
+            // Re-render may reset the span to initial value; sync it immediately
+            updateAutoAllowDisplay(state.autoAllowSeconds);
+          }
+        } else {
+          clearAutoAllowTimer();
+        }
       }
       function getRequestDisplayInfo(r) {
         const m = r.method;
@@ -242,7 +282,7 @@
         const m = r.method;
         if (m === 'item/commandExecution/requestApproval' || m === 'item/fileChange/requestApproval') {
           html += '<div class="request-actions">';
-          html += '<button class="btn btn-primary btn-sm" data-action="respond-approval" data-id="' + r.id + '" data-value="accept">✅ 允许</button>';
+          html += '<button class="btn btn-primary btn-sm" data-action="respond-approval" data-id="' + r.id + '" data-value="accept" data-auto-allow="true" data-auto-method="approval">✅ 允许 <span class="auto-allow-timer">10</span></button>';
           html += '<button class="btn btn-sm" data-action="respond-approval" data-id="' + r.id + '" data-value="decline">❌ 拒绝</button>';
           html += '<button class="btn btn-sm" data-action="respond-approval" data-id="' + r.id + '" data-value="cancel">🚫 取消</button>';
           html += '</div>';
@@ -263,12 +303,12 @@
           html += '</div>';
         } else if (m === 'item/tool/call') {
           html += '<div class="request-actions">';
-          html += '<button class="btn btn-primary btn-sm" data-action="respond-tool-allow" data-id="' + r.id + '">✅ 允许</button>';
+          html += '<button class="btn btn-primary btn-sm" data-action="respond-tool-allow" data-id="' + r.id + '" data-auto-allow="true" data-auto-method="tool">✅ 允许 <span class="auto-allow-timer">10</span></button>';
           html += '<button class="btn btn-sm" data-action="respond-tool-decline" data-id="' + r.id + '">❌ 拒绝</button>';
           html += '</div>';
         } else {
           html += '<div class="request-actions">';
-          html += '<button class="btn btn-primary btn-sm" data-action="respond-empty" data-id="' + r.id + '">返回空结果</button>';
+          html += '<button class="btn btn-primary btn-sm" data-action="respond-empty" data-id="' + r.id + '" data-auto-allow="true" data-auto-method="empty">返回空结果 <span class="auto-allow-timer">10</span></button>';
           html += '<button class="btn btn-sm" data-action="respond-reject" data-id="' + r.id + '">拒绝请求</button>';
           html += '</div>';
         }
@@ -315,6 +355,10 @@
       }
       function setupTextareaAutoResize(textarea) {
         if (!textarea) return;
+        // Initialize height immediately to prevent jump on first input
+        textarea.style.height = 'auto';
+        const initHeight = Math.min(textarea.scrollHeight, 200);
+        textarea.style.height = initHeight + 'px';
         textarea.addEventListener('input', () => {
           textarea.style.height = 'auto';
           const newHeight = Math.min(textarea.scrollHeight, 200);
@@ -384,6 +428,7 @@
           const action = btn.getAttribute('data-action');
           const rawId = btn.getAttribute('data-id');
           const id = Number(rawId) || rawId;
+          clearAutoAllowTimer();
           if (action === 'respond-approval') respondApproval(id, btn.getAttribute('data-value'));
           if (action === 'respond-tool-input') respondToolInput(id);
           if (action === 'respond-tool-allow') respondToolAllow(id);
