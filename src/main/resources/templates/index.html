@@ -4,7 +4,251 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Claude Web</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #ffffff; color: #1f2937;
+    }
+    .app { display: flex; height: 100vh; overflow: hidden; }
+    .sidebar {
+      width: 280px; min-width: 280px; max-width: 450px;
+      background: #f8fafc; border-right: 1px solid #e2e8f0;
+      display: flex; flex-direction: column; transition: width .2s ease, min-width .2s ease;
+    }
+    .sidebar.collapsed { width: 0; min-width: 0; overflow: hidden; border-right: none; }
+    .sidebar-header {
+      display: flex; align-items: center; gap: .5rem; padding: .75rem; border-bottom: 1px solid #e2e8f0;
+    }
+    .icon-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 6px; border: 1px solid #cbd5e1;
+      background: #ffffff; color: #475569; cursor: pointer; transition: .15s;
+    }
+    .icon-btn:hover { background: #eff6ff; color: #2563eb; border-color: #93c5fd; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
+      padding: .45rem .75rem; border-radius: 6px; border: 1px solid #cbd5e1;
+      background: #ffffff; color: #374151; font-size: .875rem; cursor: pointer; transition: .15s;
+    }
+    .btn:hover { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
+    .btn-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+    .btn-danger { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+    .btn-danger:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+    .btn-sm { padding: .25rem .5rem; font-size: .8rem; }
+    .new-thread-btn { flex: 1; }
+
+    .sidebar-search { padding: .5rem .75rem; border-bottom: 1px solid #e2e8f0; }
+    .sidebar-search input {
+      width: 100%; padding: .4rem .6rem; border-radius: 6px; border: 1px solid #cbd5e1;
+      background: #ffffff; color: #1f2937; font-size: .875rem; outline: none;
+    }
+    .sidebar-search input:focus { border-color: #2563eb; }
+    .thread-tree { flex: 1; overflow-y: auto; padding: .5rem 0; }
+    .pinned-section { padding: 0 .75rem .5rem; border-bottom: 1px solid #e2e8f0; margin-bottom: .5rem; }
+    .pinned-section:empty { display: none; }
+    .thread-tree-header { padding: .25rem .75rem; font-size: .75rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
+    .project-group { margin-bottom: .25rem; }
+    .project-header {
+      display: flex; align-items: center; gap: .4rem; padding: .4rem .75rem; cursor: pointer; user-select: none;
+    }
+    .project-header:hover { background: #eff6ff; }
+    .project-chevron { width: 14px; height: 14px; color: #64748b; transition: transform .15s; }
+    .project-group[data-collapsed="true"] .project-chevron { transform: rotate(-90deg); }
+    .project-icon { width: 16px; height: 16px; color: #3b82f6; }
+    .project-name { flex: 1; min-width: 0; font-size: .875rem; font-weight: 500; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .project-actions { display: flex; align-items: center; gap: .25rem; opacity: 0; transition: opacity .15s; }
+    .project-header:hover .project-actions { opacity: 1; }
+    .thread-list { list-style: none; padding: 0; }
+    .thread-list.pinned { margin-bottom: .5rem; }
+    .thread-row {
+      display: flex; align-items: center; gap: .4rem; padding: .35rem .75rem .35rem 1.5rem; cursor: pointer;
+    }
+    .thread-row:hover { background: #eff6ff; }
+    .thread-row[data-active="true"] { background: #dbeafe; }
+    .thread-left { display: flex; align-items: center; gap: .25rem; }
+    .thread-pin { width: 14px; height: 14px; color: #94a3b8; cursor: pointer; border: none; background: transparent; }
+    .thread-pin[data-pinned="true"] { color: #f59e0b; }
+    .thread-status { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+    .thread-status[data-state="unread"] { background: #f59e0b; }
+    .thread-title { flex: 1; min-width: 0; font-size: .85rem; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .thread-row[data-active="true"] .thread-title { color: #1e40af; font-weight: 500; }
+    .thread-time { font-size: .75rem; color: #94a3b8; white-space: nowrap; }
+    .thread-actions { display: flex; align-items: center; gap: .2rem; opacity: 0; transition: opacity .15s; }
+    .thread-row:hover .thread-actions { opacity: 1; }
+    .project-empty { padding: .5rem .75rem .5rem 1.5rem; font-size: .8rem; color: #94a3b8; }
+    .show-more { padding: .35rem .75rem .35rem 1.5rem; font-size: .8rem; color: #64748b; cursor: pointer; }
+    .show-more:hover { color: #2563eb; }
+
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #ffffff; }
+    .content-header {
+      display: flex; align-items: center; gap: .75rem; padding: .75rem 1rem; border-bottom: 1px solid #e2e8f0; min-height: 56px; background: #ffffff;
+    }
+    .content-header h1 { font-size: 1rem; font-weight: 600; color: #111827; }
+    .content-body { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+    .home-view {
+      flex: 1; display: flex; flex-direction: column; align-items: center; padding: 1rem; padding-top: calc(50vh - 180px);
+    }
+    .home-center {
+      display: flex; flex-direction: column; align-items: center; gap: 1rem; width: 100%;
+    }
+    .home-hero { font-size: 2.5rem; font-weight: 300; color: #1e40af; }
+    .home-divider { width: 100%; max-width: 680px; border: none; border-top: 1px solid #e2e8f0; margin: 0; }
+    .home-view .composer { border-top: none; margin-top: -10px; }
+    .home-view .composer-send { margin-top: 9px; }
+    .conversation-root .composer-send { margin-bottom: 7px; }
+
+
+    .conversation-root { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .conversation-list { flex: 1; overflow-y: auto; padding: 1rem 1rem 0; list-style: none; }
+    .conversation-empty, .conversation-loading { padding: 2rem; text-align: center; color: #94a3b8; }
+    .conversation-item { margin-bottom: .5rem; }
+    .message-row { display: flex; }
+    .message-row.user { justify-content: flex-end; }
+    .message-stack { max-width: 85%; }
+    .message-card {
+      padding: .35rem .65rem; font-size: .9375rem; line-height: 1.42; white-space: pre-wrap; word-break: break-word;
+    }
+    .message-card.user {
+      background: #dbeafe; border-radius: 14px 14px 4px 14px; color: #1e3a8a;
+    }
+    .message-card.assistant {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px 14px 14px 4px; color: #1f2937;
+    }
+    .markdown-body { white-space: normal; }
+    .markdown-body > :first-child { margin-top: 0 !important; }
+    .markdown-body > :last-child { margin-bottom: 0 !important; }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 { margin: .65rem 0 .4rem; font-weight: 700; line-height: 1.25; color: #0f172a; }
+    .markdown-body h1 { font-size: 1.3rem; border-bottom: 1px solid #e2e8f0; padding-bottom: .35rem; }
+    .markdown-body h2 { font-size: 1.15rem; }
+    .markdown-body h3 { font-size: 1.05rem; }
+    .markdown-body p { margin: .4rem 0; }
+    .markdown-body ul, .markdown-body ol { margin: .4rem 0; padding-left: 1.4rem; }
+    .markdown-body li { margin: .2rem 0; }
+    .markdown-body li::marker { color: #475569; }
+    .markdown-body code {
+      background: #eef2ff; padding: .15rem .4rem; border-radius: 5px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .875em; color: #4338ca; border: 1px solid #c7d2fe;
+    }
+    .markdown-body pre {
+      background: #0b1220; border: 1px solid #1e293b; border-radius: 10px; padding: .65rem; overflow-x: auto; margin: .4rem 0;
+    }
+    .markdown-body pre code { background: transparent; padding: 0; color: #e2e8f0; border: none; }
+    .markdown-body blockquote {
+      border-left: 4px solid #3b82f6; background: #eff6ff; margin: .4rem 0; padding: .45rem .6rem; border-radius: 0 8px 8px 0; color: #1e3a8a;
+    }
+    .markdown-body table { border-collapse: collapse; margin: .4rem 0; width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; }
+    .markdown-body th, .markdown-body td { border: 1px solid #cbd5e1; padding: .5rem .75rem; text-align: left; }
+    .markdown-body th { background: #e0f2fe; font-weight: 700; color: #0c4a6e; }
+    .markdown-body tr:nth-child(even) { background: #f8fafc; }
+    .markdown-body a { color: #2563eb; text-decoration: underline; font-weight: 500; }
+    .markdown-body a:hover { color: #1e40af; }
+    .markdown-body img { max-width: 100%; border-radius: 8px; }
+    .message-images { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .5rem; }
+    .message-images img { max-height: 160px; border-radius: 8px; cursor: pointer; border: 1px solid #e2e8f0; }
+    .worked-separator { display: flex; align-items: center; gap: .75rem; color: #94a3b8; font-size: .875rem; margin: 1.5rem 0; }
+    .thinking-card {
+      background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: .5rem;
+      overflow: hidden; max-width: 85%;
+    }
+    .thinking-header {
+      display: flex; align-items: center; gap: .5rem; padding: .35rem .65rem;
+      background: #e2e8f0; color: #475569; font-size: .875rem; cursor: pointer; user-select: none;
+    }
+    .thinking-header::before {
+      content: '▸'; display: inline-block; transition: transform .2s; font-size: .75rem;
+    }
+    .thinking-card.expanded .thinking-header::before { transform: rotate(90deg); }
+    .thinking-body {
+      padding: .5rem .65rem; font-size: .875rem; line-height: 1.5;
+      color: #64748b; white-space: pre-wrap; word-break: break-word;
+      display: none;
+    }
+    .thinking-card.expanded .thinking-body { display: block; }
+    .thinking-body code {
+      background: #e2e8f0; padding: .1rem .3rem; border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .85em;
+    }
+    .worked-separator::before, .worked-separator::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; }
+    .request-card {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 100;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 1.25rem;
+      width: 90%;
+      max-width: 520px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    }
+    .request-card-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.35);
+      z-index: 99;
+    }
+    .request-title { font-weight: 600; color: #d97706; margin-bottom: .25rem; }
+    .request-meta { font-size: .8rem; color: #94a3b8; margin-bottom: .75rem; }
+    .request-reason { font-size: .9rem; color: #374151; margin-bottom: .75rem; }
+    .request-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .request-question { margin: .75rem 0; padding: .75rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .request-question-title { font-weight: 500; margin-bottom: .25rem; color: #1f2937; }
+    .request-question-text { font-size: .85rem; color: #64748b; margin-bottom: .5rem; }
+    .request-select, .request-input {
+      width: 100%; padding: .4rem .5rem; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #1f2937; margin-top: .25rem;
+    }
+    .live-overlay {
+      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: .75rem 1rem; color: #1d4ed8;
+    }
+    .live-overlay-label { font-weight: 500; }
+    .live-overlay-reasoning { font-size: .85rem; color: #3b82f6; margin-top: .25rem; }
+    .live-overlay-error { font-size: .85rem; color: #dc2626; margin-top: .25rem; }
+
+    .composer {
+      display: flex; align-items: flex-start; justify-content: center; gap: .5rem; width: 100%;
+      padding: .75rem 1rem; border-top: 1px solid #e2e8f0; background: #ffffff; min-height: 64px;
+    }
+    .conversation-root .composer {
+      align-items: flex-end;
+    }
+    .composer-box {
+      display: flex; align-items: flex-end; width: 100%; max-width: 600px;
+      padding: .5rem; border: 1px solid #cbd5e1; border-radius: 12px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .composer-textarea {
+      flex: 1; min-height: 24px; max-height: 200px; padding: .5rem .75rem; border: none; background: transparent; color: #1f2937; font-size: .9375rem; outline: none; resize: none; overflow-y: auto;
+    }
+    .composer-send { padding: .5rem 1rem; border-radius: 8px; }
+
+    .image-modal {
+      display: none; position: fixed; inset: 0; background: rgba(15,23,42,.7); z-index: 50; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .image-modal.active { display: flex; }
+    .image-modal img { max-width: 100%; max-height: 90vh; border-radius: 8px; }
+    .image-modal-close { position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; color: #ffffff; background: transparent; border: none; cursor: pointer; }
+
+    .context-menu { position: absolute; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: .25rem; min-width: 140px; z-index: 20; box-shadow: 0 4px 6px rgba(0,0,0,0.08); }
+    .context-menu-item { width: 100%; text-align: left; padding: .4rem .6rem; font-size: .85rem; color: #374151; background: transparent; border: none; border-radius: 6px; cursor: pointer; }
+    .context-menu-item:hover { background: #eff6ff; color: #2563eb; }
+
+    .connection-status {
+      padding: .25rem .5rem; border-radius: 6px; font-size: .75rem; font-weight: 500; z-index: 30; margin-left: auto;
+    }
+    .composer {
+      position: relative;
+    }
+    .composer .connection-status {
+      position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+    }
+    .connection-status.connected { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .connection-status.disconnected { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+  </style>
+  <script src="/js/marked.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -22,8 +266,11 @@
       </div>
     </aside>
     <main class="main" id="main">
+      <header class="content-header">
+        <button class="icon-btn" id="header-toggle-sidebar" style="display:none" title="Toggle sidebar">☰</button>
+        <div class="connection-status disconnected" id="connection-status">已断开</div>
+      </header>
       <div class="content-body" id="content-body">
-        <button class="icon-btn" id="body-toggle-sidebar" style="display:none;position:absolute;top:.75rem;left:.75rem;z-index:10;" title="Toggle sidebar">☰</button>
         <div class="home-view" id="home-view">
           <div class="home-center">
             <div class="home-hero">I'm claude</div>
@@ -55,10 +302,1056 @@
     <img src="" alt="Preview" id="image-modal-img">
   </div>
 
-  <script src="/js/marked.min.js"></script>
-  <script src="/js/core.js"></script>
-  <script src="/js/ui.js"></script>
-  <script src="/js/messaging.js"></script>
-  <script src="/js/streaming.js"></script>
+  <script>
+    (function() {
+      const LS = {
+        selectedThread: 'claude.selectedThread',
+        sidebarCollapsed: 'claude.sidebarCollapsed',
+        pinned: 'claude.pinned',
+        collapsed: 'claude.collapsedProjects',
+        displayNames: 'claude.displayNames',
+      };
+
+      const state = {
+        projectGroups: [],
+        selectedThreadId: '',
+        messages: [],
+        isLoadingThreads: false,
+        isLoadingMessages: false,
+        isSendingMessage: false,
+        resumedThreadIds: new Set(),
+        isInterrupting: false,
+        sidebarCollapsed: false,
+        sidebarSearch: '',
+        pinnedThreadIds: [],
+        collapsedProjects: [],
+        displayNames: {},
+        pendingRequests: [],
+        liveOverlay: null,
+        sseConnected: false,
+        autoRefreshTimer: null,
+        sseSource: null,
+        knownThreadIds: new Set(),
+        recentlyCreatedThreadIds: new Set(),
+      };
+
+      const els = {
+        sidebar: document.getElementById('sidebar'),
+        toggleSidebar: document.getElementById('toggle-sidebar'),
+        headerToggleSidebar: document.getElementById('header-toggle-sidebar'),
+        newThreadBtn: document.getElementById('new-thread-btn'),
+        refreshBtn: document.getElementById('refresh-btn'),
+        threadSearch: document.getElementById('thread-search'),
+        threadTree: document.getElementById('thread-tree'),
+        homeView: document.getElementById('home-view'),
+        threadView: document.getElementById('thread-view'),
+
+        homeComposer: document.getElementById('home-composer'),
+        homeSend: document.getElementById('home-send'),
+        conversationList: document.getElementById('conversation-list'),
+        threadComposer: document.getElementById('thread-composer'),
+        threadSend: document.getElementById('thread-send'),
+        threadInterrupt: document.getElementById('thread-interrupt'),
+        imageModal: document.getElementById('image-modal'),
+        imageModalImg: document.getElementById('image-modal-img'),
+        imageModalClose: document.getElementById('image-modal-close'),
+        // connection status updated via querySelectorAll in setConnectionStatus
+      };
+
+      function loadJson(key, def) { try { return JSON.parse(localStorage.getItem(key) || 'null') || def; } catch (e) { return def; } }
+      function saveJson(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+      function parseRoute() { const m = location.pathname.match(/\/thread\/([^/]+)/); return m ? m[1] : ''; }
+      function toIso(sec) { return new Date(sec * 1000).toISOString(); }
+      function projectName(cwd) { const p = (cwd || '').split('/').filter(Boolean); return p[p.length - 1] || cwd || 'unknown'; }
+      function formatTime(iso) { if (!iso) return ''; const d = new Date(iso); const now = new Date(); const diff = Math.floor((now - d) / 1000); if (diff < 60) return 'now'; if (diff < 3600) return Math.floor(diff / 60) + 'm'; if (diff < 86400) return Math.floor(diff / 3600) + 'h'; return Math.floor(diff / 86400) + 'd'; }
+      function escapeHtml(str) { return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+      async function rpc(method, params) {
+        const res = await fetch('/claude-api/rpc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, params: params != null ? params : null }) });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || `RPC ${method} failed: ${res.status}`);
+        if (!json || typeof json !== 'object' || !('result' in json)) throw new Error(`RPC ${method} returned malformed envelope`);
+        return json.result;
+      }
+
+      async function api(method, path, body) {
+        const res = await fetch('/api/claude' + path, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || `API ${method} ${path} failed: ${res.status}`);
+        return json;
+      }
+
+      function normalizeThreadGroups(payload) {
+        const data = (payload && payload.data) || [];
+        const existingInProgress = new Set();
+        for (const g of state.projectGroups) {
+          for (const t of g.threads) {
+            if (t.inProgress) existingInProgress.add(t.id);
+          }
+        }
+        const threads = data.map(t => {
+          const name = (t.preview || '').trim() || 'Untitled thread';
+          const pn = projectName(t.cwd);
+          const statusType = (t.status && t.status.type) || '';
+          const hasExplicitStatus = !!(t.status && t.status.type) || t.inProgress !== undefined;
+          const explicitInProgress = statusType === 'active' || statusType === 'inProgress' || t.inProgress === true;
+          // Default to false if no explicit status and not in existing set
+          const inProgress = hasExplicitStatus ? explicitInProgress : (existingInProgress.has(t.id) || false);
+          return {
+            id: t.id,
+            title: name,
+            projectName: pn,
+            cwd: t.cwd,
+            createdAtIso: toIso(t.createdAt),
+            updatedAtIso: toIso(t.updatedAt),
+            preview: t.preview || '',
+            unread: false,
+            inProgress: inProgress,
+          };
+        });
+        const grouped = new Map();
+        for (const t of threads) {
+          if (!grouped.has(t.projectName)) grouped.set(t.projectName, []);
+          grouped.get(t.projectName).push(t);
+        }
+        const groups = [];
+        for (const [pn, list] of grouped) {
+          list.sort((a, b) => new Date(b.updatedAtIso) - new Date(a.updatedAtIso));
+          groups.push({ projectName: pn, threads: list });
+        }
+        groups.sort((a, b) => new Date((b.threads[0] && b.threads[0].updatedAtIso) || 0) - new Date((a.threads[0] && a.threads[0].updatedAtIso) || 0));
+        return groups;
+      }
+
+      function normalizeMessages(payload) {
+        const thread = (payload && payload.thread) || {};
+        const turns = thread.turns || [];
+        const msgs = [];
+        for (const turn of turns) {
+          const items = turn.items || [];
+          for (const item of items) {
+            if (item.type === 'agentMessage') {
+              msgs.push({ id: item.id, role: 'assistant', text: item.text || '', messageType: item.type });
+            } else if (item.type === 'thinkingMessage') {
+              // Skip thinking content — not shown in the conversation UI.
+              continue;
+            } else if (item.type === 'userMessage') {
+              const content = Array.isArray(item.content) ? item.content : [];
+              const textChunks = [], images = [];
+              for (const blk of content) {
+                if (blk.type === 'text' && typeof blk.text === 'string') textChunks.push(blk.text);
+                if (blk.type === 'image' && typeof blk.url === 'string') images.push(blk.url);
+              }
+              const text = textChunks.join('\n');
+              // Skip user messages that have no visible text and no images
+              // (e.g. tool_result-only messages from the SDK).
+              if (!text.trim().length && !images.length) continue;
+              msgs.push({ id: item.id, role: 'user', text, images, messageType: item.type });
+            }
+          }
+        }
+        return msgs;
+      }
+
+      function setConnectionStatus(connected) {
+        state.sseConnected = connected;
+        const text = connected ? '已连通' : '已断开';
+        const cls = 'connection-status ' + (connected ? 'connected' : 'disconnected');
+        document.querySelectorAll('.connection-status').forEach(el => {
+          el.textContent = text;
+          el.className = cls;
+        });
+      }
+
+      function updateLiveOverlay() {
+        if (!state.selectedThreadId) {
+          state.liveOverlay = null;
+          updateThreadSendButton();
+          return;
+        }
+        const allThreads = state.projectGroups.flatMap(g => g.threads);
+        const thread = allThreads.find(t => t.id === state.selectedThreadId);
+        if (thread && thread.inProgress) {
+          state.liveOverlay = { activityLabel: '思考中…', reasoningText: '', errorText: '' };
+        } else {
+          state.liveOverlay = null;
+        }
+        // Removed renderConversation() — the conversation list no longer renders
+        // the live overlay inline, so re-rendering here only causes DOM churn
+        // that can make messages flicker during streaming.
+        updateThreadSendButton();
+      }
+
+      function setThreadInProgress(threadId, val) {
+        for (const g of state.projectGroups) {
+          const t = g.threads.find(x => x.id === threadId);
+          if (t) { t.inProgress = val; break; }
+        }
+      }
+
+      function updateThreadSendButton() {
+        if (!state.selectedThreadId) return;
+        const allThreads = state.projectGroups.flatMap(g => g.threads);
+        const thread = allThreads.find(t => t.id === state.selectedThreadId);
+        const isProcessing = !!thread && thread.inProgress;
+        if (isProcessing) {
+          els.threadSend.textContent = '停止';
+          els.threadSend.classList.remove('btn-primary');
+          els.threadSend.classList.add('btn-danger');
+          els.threadSend.disabled = false;
+        } else {
+          els.threadSend.textContent = '发送';
+          els.threadSend.classList.remove('btn-danger');
+          els.threadSend.classList.add('btn-primary');
+          els.threadSend.disabled = false;
+        }
+      }
+
+      async function refreshThreads() {
+        if (state.isLoadingThreads) return;
+        state.isLoadingThreads = true;
+        try {
+          const result = await api('GET', '');
+          state.projectGroups = normalizeThreadGroups(result);
+          state.knownThreadIds = new Set(state.projectGroups.flatMap(g => g.threads.map(t => t.id)));
+          renderSidebar();
+          updateLiveOverlay();
+
+          // If selected thread no longer exists, go home
+          if (state.selectedThreadId && !state.knownThreadIds.has(state.selectedThreadId) && !state.recentlyCreatedThreadIds.has(state.selectedThreadId)) {
+            selectThread('');
+          }
+        } catch (e) {
+          console.error('refreshThreads failed', e);
+        } finally {
+          state.isLoadingThreads = false;
+          renderSidebar();
+        }
+      }
+
+      async function loadMessages(threadId) {
+        if (!threadId) return;
+
+        // Guard: don't reload while streaming with existing messages — this would
+        // replace the live message state and cause the just-sent user message to
+        // flicker or disappear. The complete/error event handler will call
+        // loadMessages() after setThreadInProgress() clears the inProgress flag.
+        const allThreads = state.projectGroups.flatMap(g => g.threads);
+        const thread = allThreads.find(t => t.id === threadId);
+        if (thread && thread.inProgress && state.messages.length > 0) {
+          return;
+        }
+
+        await ensureThreadResumed(threadId);
+        state.isLoadingMessages = true;
+        renderConversation();
+        try {
+          const result = await api('GET', '/' + encodeURIComponent(threadId));
+          state.messages = normalizeMessages(result);
+          const threadData = result && result.thread;
+          const turns = threadData && threadData.turns ? threadData.turns : [];
+          const hasInProgressTurn = turns.some(turn => turn.status === 'inProgress' || turn.status === 'active');
+          if (hasInProgressTurn) {
+            setThreadInProgress(threadId, true);
+          }
+        } catch (e) {
+          console.error('loadMessages failed', e);
+          // Don't clear messages on error — preserve whatever is currently shown.
+        } finally {
+          state.isLoadingMessages = false;
+          renderConversation();
+          updateLiveOverlay();
+          updateThreadSendButton();
+        }
+      }
+
+      async function fetchPendingRequests() {
+        try {
+          const res = await fetch('/claude-api/server-requests/pending');
+          const json = await res.json().catch(() => ({}));
+          const data = Array.isArray(json.data) ? json.data : [];
+          state.pendingRequests = data;
+          renderConversation();
+        } catch (e) {
+          console.error('fetchPendingRequests failed', e);
+        }
+      }
+
+      function getDisplayName(projectName) { return state.displayNames[projectName] || projectName; }
+
+      function renderSidebar() {
+        const tree = els.threadTree;
+        if (state.isLoadingThreads && state.projectGroups.length === 0) {
+          tree.innerHTML = '<div class="conversation-loading">Loading threads…</div>'; return;
+        }
+
+        const search = state.sidebarSearch.trim().toLowerCase();
+        const pinned = [];
+        for (const gid of state.pinnedThreadIds) {
+          for (const g of state.projectGroups) {
+            const t = g.threads.find(x => x.id === gid);
+            if (t) pinned.push(t);
+          }
+        }
+
+        let html = '';
+        if (pinned.length) {
+          html += '<ul class="thread-list pinned">';
+          for (const t of pinned) html += renderThreadRow(t, true);
+          html += '</ul>';
+        }
+
+        html += '<div class="thread-tree-header">最近对话</div>';
+
+        if (state.projectGroups.length === 0) {
+          // Show current directory even when no threads exist
+          const currentProject = projectName('/home/sunsw/code');
+          html += '<div class="project-group" data-project="' + escapeHtml(currentProject) + '" data-collapsed="false">';
+          html += '<div class="project-header" data-action="toggle-project" data-project="' + escapeHtml(currentProject) + '">';
+          html += '<svg class="project-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+          html += '<svg class="project-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>';
+          html += '<span class="project-name">' + escapeHtml(currentProject) + '</span>';
+          html += '</div>';
+          html += '<div class="project-empty">No threads</div>';
+          html += '</div>';
+          tree.innerHTML = html; return;
+        }
+
+        let hasResults = false;
+        for (const g of state.projectGroups) {
+          let threads = g.threads;
+          if (search) threads = threads.filter(t => t.title.toLowerCase().includes(search));
+          const collapsed = state.collapsedProjects.includes(g.projectName);
+          const display = getDisplayName(g.projectName);
+          html += '<div class="project-group" data-project="' + escapeHtml(g.projectName) + '" data-collapsed="' + collapsed + '">';
+          html += '<div class="project-header" data-action="toggle-project" data-project="' + escapeHtml(g.projectName) + '">';
+          html += '<svg class="project-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+          html += '<svg class="project-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>';
+          html += '<span class="project-name">' + escapeHtml(display) + '</span>';
+          html += '</div>';
+          if (threads.length === 0 && !search) {
+            if (!collapsed) html += '<div class="project-empty">No threads</div>';
+          } else if (threads.length > 0 && !collapsed) {
+            hasResults = true;
+            html += '<ul class="thread-list">';
+            for (const t of threads) html += renderThreadRow(t, false);
+            html += '</ul>';
+          } else if (threads.length > 0) {
+            hasResults = true;
+          }
+          html += '</div>';
+        }
+
+        if (search && !hasResults && state.projectGroups.length > 0) {
+          html += '<div class="conversation-empty" style="padding:1rem .75rem">No matching threads</div>';
+        }
+        tree.innerHTML = html;
+      }
+
+      function renderThreadRow(t, isPinned) {
+        const active = t.id === state.selectedThreadId;
+        const stateAttr = t.unread ? 'unread' : (t.inProgress ? 'inProgress' : '');
+        let html = '<li class="thread-row" data-thread-id="' + escapeHtml(t.id) + '" data-action="select-thread" data-active="' + active + '">';
+        html += '<div class="thread-left">';
+        if (t.unread || t.inProgress) html += '<span class="thread-status" data-state="' + stateAttr + '"></span>';
+        html += '<button class="thread-pin" data-action="toggle-pin" data-thread-id="' + escapeHtml(t.id) + '" data-pinned="' + isPinned + '" title="Pin">📌</button>';
+        html += '</div>';
+        html += '<span class="thread-title">' + escapeHtml(t.title) + '</span>';
+        html += '<span class="thread-time">' + formatTime(t.updatedAtIso) + '</span>';
+        html += '<div class="thread-actions">';
+        html += '<button class="icon-btn btn-sm" data-action="archive-thread" data-thread-id="' + escapeHtml(t.id) + '" title="Archive">🗑</button>';
+        html += '</div>';
+        html += '</li>';
+        return html;
+      }
+
+      function selectThread(threadId) {
+        state.selectedThreadId = threadId || '';
+        if (threadId) localStorage.setItem(LS.selectedThread, threadId); else localStorage.removeItem(LS.selectedThread);
+        if (threadId) {
+          history.replaceState(null, '', '/thread/' + encodeURIComponent(threadId));
+        } else {
+          history.replaceState(null, '', '/');
+        }
+        updateView();
+        if (threadId) {
+          loadMessages(threadId);
+          fetchPendingRequests();
+        } else {
+          state.messages = []; state.pendingRequests = []; state.liveOverlay = null; renderConversation();
+        }
+        updateThreadSendButton();
+      }
+
+      function updateView() {
+        const isHome = !state.selectedThreadId;
+        els.homeView.style.display = isHome ? 'flex' : 'none';
+        els.threadView.style.display = isHome ? 'none' : 'flex';
+        els.toggleSidebar.style.display = state.sidebarCollapsed ? 'none' : 'inline-flex';
+        els.headerToggleSidebar.style.display = state.sidebarCollapsed ? 'inline-flex' : 'none';
+        renderSidebar();
+      }
+
+      function renderConversation() {
+        const list = els.conversationList;
+        const threadId = state.selectedThreadId;
+        if (!threadId) { list.innerHTML = ''; return; }
+        if (state.isLoadingMessages && state.messages.length === 0) {
+          return;
+        }
+        if (state.messages.length === 0 && state.pendingRequests.length === 0) {
+          return;
+        }
+
+        let html = '';
+        const requests = state.pendingRequests.filter(r => r.threadId === threadId || !r.threadId);
+        if (requests.length > 0) {
+          html += '<div class="request-card-overlay"></div>';
+          html += renderRequestCard(requests[0]);
+        }
+        for (const m of state.messages) {
+          if (m.messageType === 'worked') {
+            html += '<li class="conversation-item"><div class="worked-separator">' + escapeHtml(m.text) + '</div></li>'; continue;
+          }
+          // Skip thinking content — not shown in the conversation UI.
+          if (m.role === 'thinking') continue;
+          // Skip empty messages (e.g. permission/tool responses with no visible content).
+          const hasText = !!(m.text && m.text.trim().length);
+          const hasImages = !!(m.images && m.images.length);
+          if (!hasText && !hasImages) continue;
+          html += '<li class="conversation-item"><div class="message-row ' + m.role + '">';
+          html += '<div class="message-stack">';
+          if (m.images && m.images.length) {
+            html += '<div class="message-images">';
+            for (const url of m.images) html += '<img src="' + escapeHtml(url) + '" data-action="open-image">';
+            html += '</div>';
+          }
+          if (m.role === 'assistant') {
+            html += '<div class="message-card ' + m.role + ' markdown-body">' + marked.parse(m.text || '') + '</div>';
+          } else {
+            html += '<div class="message-card ' + m.role + '">' + escapeHtml(m.text) + '</div>';
+          }
+          html += '</div></div></li>';
+        }
+        // live overlay removed per request
+        const wasNearBottom = list.scrollHeight - list.scrollTop <= list.clientHeight + 40;
+        list.innerHTML = html;
+        if (wasNearBottom) list.scrollTop = list.scrollHeight;
+      }
+
+      function renderRequestCard(r) {
+        let html = '<div class="request-card">';
+        html += '<div class="request-title">' + escapeHtml(r.method) + '</div>';
+        html += '<div class="request-meta">Request #' + r.id + ' · ' + new Date(r.receivedAtIso).toLocaleString() + '</div>';
+        const reason = readRequestReason(r);
+        if (reason) html += '<div class="request-reason">' + escapeHtml(reason) + '</div>';
+        const m = r.method;
+        if (m === 'item/commandExecution/requestApproval' || m === 'item/fileChange/requestApproval') {
+          html += '<div class="request-actions">';
+          html += '<button class="btn btn-primary btn-sm" data-action="respond-approval" data-id="' + r.id + '" data-value="accept">Accept</button>';
+          html += '<button class="btn btn-sm" data-action="respond-approval" data-id="' + r.id + '" data-value="acceptForSession">Accept for Session</button>';
+          html += '<button class="btn btn-sm" data-action="respond-approval" data-id="' + r.id + '" data-value="decline">Decline</button>';
+          html += '<button class="btn btn-sm" data-action="respond-approval" data-id="' + r.id + '" data-value="cancel">Cancel</button>';
+          html += '</div>';
+        } else if (m === 'item/tool/requestUserInput') {
+          const questions = readToolQuestions(r);
+          html += '<div class="request-user-input">';
+          for (const q of questions) {
+            html += '<div class="request-question">';
+            html += '<div class="request-question-title">' + escapeHtml(q.header || q.question) + '</div>';
+            if (q.header && q.question) html += '<div class="request-question-text">' + escapeHtml(q.question) + '</div>';
+            html += '<select class="request-select" data-action="question-answer" data-req="' + r.id + '" data-qid="' + escapeHtml(q.id) + '">';
+            for (const opt of q.options) html += '<option value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</option>';
+            html += '</select>';
+            if (q.isOther) html += '<input type="text" class="request-input" data-action="question-other" data-req="' + r.id + '" data-qid="' + escapeHtml(q.id) + '" placeholder="Other answer">';
+            html += '</div>';
+          }
+          html += '<button class="btn btn-primary btn-sm" data-action="respond-tool-input" data-id="' + r.id + '">Submit Answers</button>';
+          html += '</div>';
+        } else if (m === 'item/tool/call') {
+          html += '<div class="request-actions">';
+          html += '<button class="btn btn-danger btn-sm" data-action="respond-tool-fail" data-id="' + r.id + '">Fail Tool Call</button>';
+          html += '<button class="btn btn-sm" data-action="respond-tool-success" data-id="' + r.id + '">Success (Empty)</button>';
+          html += '</div>';
+        } else {
+          html += '<div class="request-actions">';
+          html += '<button class="btn btn-primary btn-sm" data-action="respond-empty" data-id="' + r.id + '">Return Empty Result</button>';
+          html += '<button class="btn btn-sm" data-action="respond-reject" data-id="' + r.id + '">Reject Request</button>';
+          html += '</div>';
+        }
+        html += '</div>';
+        return html;
+      }
+
+      function readRequestReason(r) {
+        const p = r.params || {};
+        if (typeof p.reason === 'string') return p.reason;
+        if (typeof p.message === 'string') return p.message;
+        if (p.command) return typeof p.command === 'string' ? p.command : JSON.stringify(p.command);
+        return '';
+      }
+      function readToolQuestions(r) {
+        const p = r.params || {};
+        const qs = p.questions || p.inputs || [];
+        const out = [];
+        if (Array.isArray(qs)) {
+          for (let i = 0; i < qs.length; i++) {
+            const q = qs[i];
+            out.push({
+              id: String(q.id || i),
+              header: q.header || q.title || '',
+              question: q.question || q.text || '',
+              options: Array.isArray(q.options) ? q.options : ['yes', 'no'],
+              isOther: q.type === 'other' || q.allowOther || false,
+            });
+          }
+        }
+        return out;
+      }
+
+      function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+      async function ensureThreadResumed(threadId) {
+        if (!threadId || state.resumedThreadIds.has(threadId)) return;
+        // For claude-agent-sdk, resume is handled automatically via sessionId in options.
+        // The SDK persists sessions and resumes them when the same sessionId is provided.
+        // No explicit resume call needed from frontend.
+        state.resumedThreadIds.add(threadId);
+      }
+
+      async function sendHomeMessage() {
+        if (state.isSendingMessage) return;
+        const text = els.homeComposer.value.trim();
+        if (!text) return;
+        const cwd = '/home/sunsw/code';
+        state.isSendingMessage = true;
+        els.homeSend.disabled = true;
+        let threadId = '';
+        try {
+          const sessionOptions = buildSessionOptions();
+          const result = await api('POST', '', { cwd, name: text.substring(0, 30), ...sessionOptions });
+          threadId = result && result.claudeId ? result.claudeId : '';
+          if (!threadId) throw new Error('create session did not return thread id');
+          state.resumedThreadIds.add(threadId);
+          els.homeComposer.value = '';
+          resetTextareaHeight(els.homeComposer);
+          state.recentlyCreatedThreadIds.add(threadId);
+          setTimeout(() => state.recentlyCreatedThreadIds.delete(threadId), 15000);
+          selectThread(threadId);
+          await delay(500);
+          await api('POST', '/' + encodeURIComponent(threadId) + '/message', { text });
+          state.liveOverlay = { activityLabel: '思考中…', reasoningText: '', errorText: '' };
+          setThreadInProgress(threadId, true);
+          updateThreadSendButton();
+          renderConversation();
+          await loadMessages(threadId);
+          await refreshThreads();
+        } catch (e) {
+          alert('发送失败: ' + e.message);
+          if (threadId && state.selectedThreadId === threadId) {
+            selectThread('');
+          }
+        } finally {
+          state.isSendingMessage = false;
+          els.homeSend.textContent = '发送';
+          els.homeSend.disabled = false;
+        }
+      }
+
+      async function sendThreadMessage() {
+        if (state.isSendingMessage) return;
+        const text = els.threadComposer.value.trim();
+        if (!text || !state.selectedThreadId) return;
+        await ensureThreadResumed(state.selectedThreadId);
+        state.isSendingMessage = true;
+        els.threadSend.disabled = true;
+        try {
+          const msgOptions = buildMessageOptions();
+          await api('POST', '/' + encodeURIComponent(state.selectedThreadId) + '/message', { text, ...msgOptions });
+          els.threadComposer.value = '';
+          resetTextareaHeight(els.threadComposer);
+          state.liveOverlay = { activityLabel: '思考中…', reasoningText: '', errorText: '' };
+          setThreadInProgress(state.selectedThreadId, true);
+          state.isSendingMessage = false;
+          updateThreadSendButton();
+          // Append user message directly to preserve historical messages in view.
+          // Do NOT call loadMessages() here — it would fetch only in-memory messages
+          // (missing history) while the session is inProgress. Full history is loaded
+          // automatically when the streaming completes (complete/error event).
+          state.messages.push({ id: 'u_' + Date.now(), role: 'user', text: text, messageType: 'userMessage' });
+          renderConversation();
+          await refreshThreads();
+          await fetchPendingRequests();
+        } catch (e) {
+          const msg = e && e.message ? e.message : String(e);
+          if (msg.includes('thread not found') || msg.includes('Session not found')) {
+            alert('该会话在远程服务器上已失效，可能是连接断开后重建了。');
+            setThreadInProgress(state.selectedThreadId, false);
+            state.liveOverlay = null;
+            state.isSendingMessage = false;
+            await refreshThreads();
+            const stillExists = state.knownThreadIds && state.knownThreadIds.has(state.selectedThreadId);
+            if (!stillExists) selectThread('');
+            else updateThreadSendButton();
+          } else {
+            alert('发送失败: ' + msg);
+            state.isSendingMessage = false;
+            updateThreadSendButton();
+          }
+        }
+      }
+
+      async function doInterrupt() {
+        if (!state.selectedThreadId || state.isInterrupting) return;
+        state.isInterrupting = true;
+        els.threadSend.textContent = '停止中…';
+        els.threadSend.disabled = true;
+        try {
+          await api('POST', '/' + encodeURIComponent(state.selectedThreadId) + '/cancel', {});
+          setThreadInProgress(state.selectedThreadId, false);
+          state.liveOverlay = null;
+          await loadMessages(state.selectedThreadId);
+          await refreshThreads();
+        } catch (e) {
+          alert('停止失败: ' + e.message);
+        } finally {
+          state.isInterrupting = false;
+          updateThreadSendButton();
+        }
+      }
+
+      async function handleThreadSendClick() {
+        const allThreads = state.projectGroups.flatMap(g => g.threads);
+        const thread = allThreads.find(t => t.id === state.selectedThreadId);
+        if (thread && thread.inProgress) {
+          await doInterrupt();
+        } else {
+          await sendThreadMessage();
+        }
+      }
+
+      async function archiveThread(threadId) {
+        if (!threadId) return;
+        if (!confirm('Archive this thread?')) return;
+        try {
+          await api('DELETE', '/' + encodeURIComponent(threadId));
+          if (state.selectedThreadId === threadId) selectThread('');
+          await refreshThreads();
+        } catch (e) {
+          alert('Archive failed: ' + e.message);
+        }
+      }
+
+      async function respondApproval(id, value) {
+        let payload;
+        if (value === 'accept') payload = { result: { approved: true } };
+        else if (value === 'acceptForSession') payload = { result: { approved: true, forSession: true } };
+        else if (value === 'decline') payload = { error: { message: 'Declined by user' } };
+        else if (value === 'cancel') payload = { error: { message: 'Cancelled by user' } };
+        else payload = { result: {} };
+        try {
+          await fetch('/claude-api/server-requests/respond', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...payload }) });
+          await fetchPendingRequests();
+          await refreshThreads();
+        } catch (e) { alert('Failed: ' + e.message); }
+      }
+
+      async function respondToolInput(id) {
+        const answers = {};
+        document.querySelectorAll('[data-action="question-answer"][data-req="' + id + '"]').forEach(sel => {
+          const qid = sel.getAttribute('data-qid');
+          answers[qid] = sel.value;
+        });
+        document.querySelectorAll('[data-action="question-other"][data-req="' + id + '"]').forEach(inp => {
+          const qid = inp.getAttribute('data-qid');
+          if (answers[qid] === 'Other') answers[qid] = inp.value || 'Other';
+        });
+        try {
+          await fetch('/claude-api/server-requests/respond', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, result: { answers } }) });
+          await fetchPendingRequests();
+        } catch (e) { alert('Failed: ' + e.message); }
+      }
+
+      async function respondToolFail(id) {
+        try {
+          await fetch('/claude-api/server-requests/respond', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, error: { message: 'Tool call failed by user' } }) });
+          await fetchPendingRequests();
+        } catch (e) { alert('Failed: ' + e.message); }
+      }
+      async function respondToolSuccess(id) {
+        try {
+          await fetch('/claude-api/server-requests/respond', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, result: {} }) });
+          await fetchPendingRequests();
+        } catch (e) { alert('Failed: ' + e.message); }
+      }
+      async function respondEmpty(id) {
+        try {
+          await fetch('/claude-api/server-requests/respond', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, result: {} }) });
+          await fetchPendingRequests();
+        } catch (e) { alert('Failed: ' + e.message); }
+      }
+      async function respondReject(id) {
+        try {
+          await fetch('/claude-api/server-requests/respond', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, error: { message: 'Rejected by user' } }) });
+          await fetchPendingRequests();
+        } catch (e) { alert('Failed: ' + e.message); }
+      }
+
+      function setupTextareaAutoResize(textarea) {
+        if (!textarea) return;
+        textarea.addEventListener('input', () => {
+          textarea.style.height = 'auto';
+          const newHeight = Math.min(textarea.scrollHeight, 200);
+          textarea.style.height = newHeight + 'px';
+        });
+      }
+
+      function resetTextareaHeight(textarea) {
+        if (!textarea) return;
+        textarea.style.height = 'auto';
+        const newHeight = Math.min(textarea.scrollHeight, 200);
+        textarea.style.height = newHeight + 'px';
+      }
+
+      function setupEvents() {
+        setupTextareaAutoResize(els.homeComposer);
+        setupTextareaAutoResize(els.threadComposer);
+        els.toggleSidebar.addEventListener('click', () => setSidebarCollapsed(!state.sidebarCollapsed));
+        els.headerToggleSidebar.addEventListener('click', () => setSidebarCollapsed(!state.sidebarCollapsed));
+        els.newThreadBtn.addEventListener('click', () => selectThread(''));
+        els.refreshBtn.addEventListener('click', () => { refreshThreads(); if (state.selectedThreadId) { loadMessages(state.selectedThreadId); fetchPendingRequests(); } });
+        els.threadSearch.addEventListener('input', e => { state.sidebarSearch = e.target.value; renderSidebar(); });
+        els.homeSend.addEventListener('click', sendHomeMessage);
+        els.homeComposer.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendHomeMessage(); } });
+        els.threadSend.addEventListener('click', handleThreadSendClick);
+        els.threadComposer.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleThreadSendClick(); } });
+        // els.threadInterrupt is hidden; interrupt is handled by threadSend
+        els.imageModalClose.addEventListener('click', closeImageModal);
+        els.imageModal.addEventListener('click', e => { if (e.target === els.imageModal) closeImageModal(); });
+
+        document.addEventListener('click', e => {
+          const menu = document.querySelector('.context-menu');
+          if (menu && !menu.contains(e.target)) menu.remove();
+        });
+
+        document.addEventListener('keydown', e => {
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') { e.preventDefault(); setSidebarCollapsed(!state.sidebarCollapsed); }
+          if (e.key === 'Escape') closeImageModal();
+        });
+
+        els.threadTree.addEventListener('click', e => {
+          const btn = e.target.closest('button');
+          if (!btn) {
+            const row = e.target.closest('.thread-row');
+            if (row) { const tid = row.getAttribute('data-thread-id'); if (tid) selectThread(tid); }
+            const hdr = e.target.closest('.project-header');
+            if (hdr) { const pn = hdr.getAttribute('data-project'); if (pn) toggleProjectCollapse(pn); }
+            return;
+          }
+          const action = btn.getAttribute('data-action');
+          if (action === 'select-thread') { const tid = btn.getAttribute('data-thread-id'); if (tid) selectThread(tid); }
+          if (action === 'toggle-pin') { const tid = btn.getAttribute('data-thread-id'); if (tid) togglePin(tid); }
+          if (action === 'archive-thread') { const tid = btn.getAttribute('data-thread-id'); if (tid) archiveThread(tid); }
+          if (action === 'toggle-project') { const pn = btn.getAttribute('data-project'); if (pn) toggleProjectCollapse(pn); }
+          if (action === 'new-thread') { const pn = btn.getAttribute('data-project'); if (pn) startThreadInProject(pn); }
+          if (action === 'project-menu') { const pn = btn.getAttribute('data-project'); if (pn) showProjectMenu(btn, pn); }
+        });
+
+        els.conversationList.addEventListener('click', e => {
+          const btn = e.target.closest('button');
+          if (!btn) {
+            const img = e.target.closest('img[data-action="open-image"]');
+            if (img) openImageModal(img.src);
+            return;
+          }
+          const action = btn.getAttribute('data-action');
+          const id = Number(btn.getAttribute('data-id'));
+          if (action === 'respond-approval') respondApproval(id, btn.getAttribute('data-value'));
+          if (action === 'respond-tool-input') respondToolInput(id);
+          if (action === 'respond-tool-fail') respondToolFail(id);
+          if (action === 'respond-tool-success') respondToolSuccess(id);
+          if (action === 'respond-empty') respondEmpty(id);
+          if (action === 'respond-reject') respondReject(id);
+        });
+      }
+
+      function setSidebarCollapsed(v) {
+        state.sidebarCollapsed = !!v;
+        localStorage.setItem(LS.sidebarCollapsed, state.sidebarCollapsed ? '1' : '0');
+        els.sidebar.classList.toggle('collapsed', state.sidebarCollapsed);
+        updateView();
+      }
+
+      function toggleProjectCollapse(pn) {
+        const idx = state.collapsedProjects.indexOf(pn);
+        if (idx >= 0) state.collapsedProjects.splice(idx, 1); else state.collapsedProjects.push(pn);
+        saveJson(LS.collapsed, state.collapsedProjects);
+        renderSidebar();
+      }
+
+      function togglePin(tid) {
+        const idx = state.pinnedThreadIds.indexOf(tid);
+        if (idx >= 0) state.pinnedThreadIds.splice(idx, 1); else state.pinnedThreadIds.push(tid);
+        saveJson(LS.pinned, state.pinnedThreadIds);
+        renderSidebar();
+      }
+
+      function startThreadInProject(pn) {
+        const g = state.projectGroups.find(x => x.projectName === pn);
+        const cwd = g && g.threads[0] ? g.threads[0].cwd : '';
+
+        selectThread('');
+        setTimeout(() => els.homeComposer.focus(), 50);
+      }
+
+      function showProjectMenu(btn, pn) {
+        document.querySelectorAll('.context-menu').forEach(m => m.remove());
+        const rect = btn.getBoundingClientRect();
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        menu.style.left = rect.left + 'px';
+        menu.style.top = (rect.bottom + 4) + 'px';
+        menu.innerHTML = '<button class="context-menu-item">Rename project</button><button class="context-menu-item" style="color:#fca5a5">Remove project</button>';
+        menu.querySelectorAll('button')[0].addEventListener('click', () => { menu.remove(); const name = prompt('New display name for ' + pn, getDisplayName(pn)); if (name !== null) { state.displayNames[pn] = name.trim() || pn; saveJson(LS.displayNames, state.displayNames); renderSidebar(); } });
+        menu.querySelectorAll('button')[1].addEventListener('click', () => { menu.remove(); if (confirm('Remove project "' + getDisplayName(pn) + '" from sidebar?')) { /* no-op: just UI removal not implemented in simplified version */ } });
+        document.body.appendChild(menu);
+      }
+
+      function openImageModal(src) { els.imageModalImg.src = src; els.imageModal.classList.add('active'); }
+      function closeImageModal() { els.imageModal.classList.remove('active'); els.imageModalImg.src = ''; }
+
+      function connectSse() {
+        if (state.sseSource) { try { state.sseSource.close(); } catch (e) {} }
+        try {
+          const src = new EventSource('/claude-api/events');
+          state.sseSource = src;
+          src.onopen = () => setConnectionStatus(true);
+          src.onerror = () => setConnectionStatus(false);
+          src.onmessage = ev => {
+            try {
+              const msg = JSON.parse(ev.data);
+              handleNotification(msg);
+            } catch (e) {}
+          };
+        } catch (e) {
+          setConnectionStatus(false);
+        }
+      }
+
+      function handleNotification(msg) {
+        const method = msg && msg.method;
+        const params = msg && msg.params;
+
+        // Ignore SSE keep-alive ping and ready events — they must not trigger
+        // loadMessages() which would clear historical messages while inProgress.
+        if (method === 'ping' || method === 'ready') {
+          return;
+        }
+
+        // Handle Claude Agent protocol messages.
+        // All events that arrive during streaming must be routed here so they
+        // do not fall through to the default branch that calls loadMessages().
+        if (method === 'stream_delta' || method === 'thinking' || method === 'tool_use' ||
+            method === 'stream_end' || method === 'complete' || method === 'error' ||
+            method === 'session_created' || method === 'permission_request' ||
+            method === 'permission_cancelled' || method === 'connected' ||
+            method === 'tool_result' || method === 'pong') {
+          handleClaudeAgentNotification(msg);
+          return;
+        }
+
+        // Refresh threads and messages on most notifications
+        if (method && method.startsWith('thread/')) {
+          refreshThreads().then(() => { updateLiveOverlay(); if (state.selectedThreadId) loadMessages(state.selectedThreadId); });
+        } else if (method && method.startsWith('turn/')) {
+          refreshThreads().then(() => { updateLiveOverlay(); if (state.selectedThreadId) loadMessages(state.selectedThreadId); });
+        } else if (method === 'server/request/resolved') {
+          fetchPendingRequests();
+        } else if (method && method.includes('server')) {
+          fetchPendingRequests();
+        } else if (method === 'connection/restored') {
+          state.resumedThreadIds.clear();
+          fetchPendingRequests();
+          refreshThreads().then(() => { updateLiveOverlay(); if (state.selectedThreadId) { loadMessages(state.selectedThreadId); } });
+        } else {
+          // Unknown event — log for debugging instead of blindly reloading messages.
+          console.warn('[SSE] Unknown event type:', method, msg);
+        }
+      }
+
+      function handleClaudeAgentNotification(msg) {
+        const type = msg.method;
+        const params = msg.params || {};
+        const sessionId = params.sessionId || state.selectedThreadId;
+
+        if (type === 'session_created') {
+          if (params.sessionId && state.recentlyCreatedThreadIds.has(params.sessionId)) {
+            state.recentlyCreatedThreadIds.delete(params.sessionId);
+          }
+          refreshThreads();
+          return;
+        }
+
+        if (type === 'stream_delta') {
+          const content = params.content || '';
+          if (sessionId === state.selectedThreadId) {
+            // Append streaming content to conversation
+            appendStreamingContent(content);
+          }
+          return;
+        }
+
+        if (type === 'thinking') {
+          const content = params.content || '';
+          if (sessionId === state.selectedThreadId) {
+            updateLiveOverlayText(content);
+          }
+          return;
+        }
+
+        if (type === 'tool_use') {
+          const toolName = params.toolName || '';
+          if (sessionId === state.selectedThreadId) {
+            appendToolUse(toolName, params.toolInput);
+          }
+          return;
+        }
+
+        if (type === 'permission_request') {
+          const requestId = params.requestId;
+          const toolName = params.toolName || '';
+          if (requestId) {
+            state.pendingRequests.push({
+              id: requestId,
+              method: 'item/tool/call',
+              params: { toolName, input: params.input },
+              threadId: sessionId,
+              receivedAtIso: new Date().toISOString()
+            });
+            if (sessionId === state.selectedThreadId) {
+              renderConversation();
+            }
+          }
+          return;
+        }
+
+        if (type === 'complete' || type === 'error') {
+          if (sessionId) {
+            setThreadInProgress(sessionId, false);
+          }
+          state.liveOverlay = null;
+          updateThreadSendButton();
+          refreshThreads().then(() => {
+            if (state.selectedThreadId) {
+              loadMessages(state.selectedThreadId);
+            }
+          });
+          return;
+        }
+
+        if (type === 'connected') {
+          setConnectionStatus(true);
+          return;
+        }
+
+        // tool_result arrives after a tool call completes; we let the streaming
+        // append it naturally — no need to reload messages here.
+        if (type === 'tool_result') {
+          return;
+        }
+
+        // pong is the keep-alive response from the backend — ignore.
+        if (type === 'pong') {
+          return;
+        }
+      }
+
+      function appendStreamingContent(content) {
+        const list = els.conversationList;
+        if (!state.selectedThreadId) return;
+        // Find or create assistant message
+        let lastMsg = state.messages[state.messages.length - 1];
+        if (!lastMsg || lastMsg.role !== 'assistant') {
+          lastMsg = { id: 'a_' + Date.now(), role: 'assistant', text: '', messageType: 'agentMessage' };
+          state.messages.push(lastMsg);
+        }
+        lastMsg.text += content;
+        renderConversation();
+      }
+
+      function updateLiveOverlayText(text) {
+        if (!state.liveOverlay) {
+          state.liveOverlay = { activityLabel: '思考中…', reasoningText: text, errorText: '' };
+        } else {
+          state.liveOverlay.reasoningText = text;
+        }
+      }
+
+      function appendToolUse(toolName, toolInput) {
+        const toolText = `\n\n**Using tool:** \`${toolName}\`\n`;
+        let lastMsg = state.messages[state.messages.length - 1];
+        if (!lastMsg || lastMsg.role !== 'assistant') {
+          lastMsg = { id: 'a_' + Date.now(), role: 'assistant', text: '', messageType: 'agentMessage' };
+          state.messages.push(lastMsg);
+        }
+        lastMsg.text += toolText;
+        renderConversation();
+      }
+
+      function buildSessionOptions() {
+        // Build options for new session creation.
+        const options = {};
+        options.permissionMode = 'default';
+        options.maxTurns = 50;
+        options.persistSession = true;
+        return options;
+      }
+
+      function buildMessageOptions() {
+        // Build per-message options that can override session defaults
+        const options = {};
+        return options;
+      }
+
+      function startAutoRefresh() {
+        if (state.autoRefreshTimer) clearInterval(state.autoRefreshTimer);
+        state.autoRefreshTimer = setInterval(() => {
+          refreshThreads();
+          if (state.selectedThreadId) { loadMessages(state.selectedThreadId); fetchPendingRequests(); }
+        }, 4000);
+      }
+
+      async function init() {
+        state.sidebarCollapsed = localStorage.getItem(LS.sidebarCollapsed) === '1';
+        state.pinnedThreadIds = loadJson(LS.pinned, []);
+        state.collapsedProjects = loadJson(LS.collapsed, []);
+        state.displayNames = loadJson(LS.displayNames, {});
+        const routeId = parseRoute();
+        // Only restore selected thread if URL has /thread/xxx route.
+        // Opening http://localhost:3000/ should always go to home page.
+        if (routeId) {
+          state.selectedThreadId = routeId;
+        } else {
+          state.selectedThreadId = '';
+          localStorage.removeItem(LS.selectedThread);
+        }
+        els.sidebar.classList.toggle('collapsed', state.sidebarCollapsed);
+        setupEvents();
+        updateView();
+        await refreshThreads();
+        if (state.selectedThreadId) {
+          if (state.knownThreadIds.has(state.selectedThreadId)) {
+            selectThread(state.selectedThreadId);
+          } else {
+            selectThread('');
+          }
+        }
+        connectSse();
+        startAutoRefresh();
+      }
+
+      init();
+    })();
+  </script>
 </body>
 </html>
