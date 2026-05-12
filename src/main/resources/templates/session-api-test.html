@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SessionApiPostController - API Test</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }
+    h1 {
+      text-align: center;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #808080;
+      margin-bottom: 30px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .api-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 16px;
+      background: #2a2a2a;
+      border-radius: 12px;
+    }
+    .api-tab {
+      padding: 10px 16px;
+      background: #1a1a1a;
+      border: 1px solid #404040;
+      border-radius: 8px;
+      color: #a0a0a0;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+    .api-tab:hover {
+      background: #333;
+      color: #fff;
+    }
+    .api-tab.active {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: #fff;
+    }
+    .api-panel {
+      display: none;
+      background: #2a2a2a;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .api-panel.active {
+      display: block;
+    }
+    .api-panel h2 {
+      margin-top: 0;
+      color: #fff;
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+    .endpoint {
+      display: inline-block;
+      padding: 6px 12px;
+      background: #1a1a1a;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 14px;
+      color: #22c55e;
+      margin-bottom: 20px;
+    }
+    .input-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #a0a0a0;
+      font-size: 14px;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      background: #1a1a1a;
+      border: 1px solid #404040;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+      font-family: monospace;
+    }
+    .row {
+      display: flex;
+      gap: 16px;
+    }
+    .col {
+      flex: 1;
+    }
+    button {
+      padding: 12px 24px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    button:disabled {
+      background: #404040;
+      cursor: not-allowed;
+    }
+    .btn-success {
+      background: #22c55e;
+    }
+    .btn-success:hover {
+      background: #16a34a;
+    }
+    .btn-danger {
+      background: #ef4444;
+    }
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+    .btn-warning {
+      background: #f59e0b;
+    }
+    .btn-warning:hover {
+      background: #d97706;
+    }
+    .response {
+      margin-top: 20px;
+      padding: 16px;
+      background: #1a1a1a;
+      border-radius: 8px;
+      min-height: 100px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .response-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .response-header span {
+      font-size: 12px;
+      color: #808080;
+    }
+    .response.error {
+      border-left: 3px solid #ef4444;
+    }
+    .response.success {
+      border-left: 3px solid #22c55e;
+    }
+    .sse-output {
+      margin-top: 20px;
+      padding: 16px;
+      background: #1a1a1a;
+      border-radius: 8px;
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .sse-output .event {
+      margin-bottom: 8px;
+      padding: 8px;
+      background: #2a2a2a;
+      border-radius: 4px;
+    }
+    .sse-output .event.ready { border-left: 3px solid #3b82f6; }
+    .sse-output .event.turn\\/started { border-left: 3px solid #22c55e; }
+    .sse-output .event.stream_delta { border-left: 3px solid #a0a0a0; color: #22c55e; }
+    .sse-output .event.complete { border-left: 3px solid #f59e0b; }
+    .sse-output .event.error { border-left: 3px solid #ef4444; color: #ef4444; }
+    .sse-output .event.ping { border-left: 3px solid #808080; color: #808080; }
+    .session-list {
+      margin-top: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .session-item {
+      padding: 12px;
+      background: #1a1a1a;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .session-item:hover {
+      background: #333;
+    }
+    .session-item.selected {
+      background: #3b82f6;
+    }
+    .session-item .title {
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .session-item .meta {
+      font-size: 12px;
+      color: #808080;
+    }
+    .helper-text {
+      font-size: 12px;
+      color: #808080;
+      margin-top: 4px;
+    }
+    .stats {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #808080;
+    }
+    .button-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SessionApiPostController - API Test</h1>
+    <p class="subtitle">/api/claude/v2/*</p>
+
+    <div class="api-tabs">
+      <button class="api-tab active" onclick="showApi('list')">list</button>
+      <button class="api-tab" onclick="showApi('listMysql')">listMysql</button>
+      <button class="api-tab" onclick="showApi('get')">get</button>
+      <button class="api-tab" onclick="showApi('create')">create</button>
+      <button class="api-tab" onclick="showApi('sendMessage')">sendMessage</button>
+      <button class="api-tab" onclick="showApi('sendMessageStream')">sendMessageStream</button>
+      <button class="api-tab" onclick="showApi('cancel')">cancel</button>
+      <button class="api-tab" onclick="showApi('approval')">approval</button>
+      <button class="api-tab" onclick="showApi('delete')">delete</button>
+      <button class="api-tab" onclick="showApi('searchFiles')">searchFiles</button>
+      <button class="api-tab" onclick="showApi('updateTitle')">updateTitle</button>
+    </div>
+
+    <div id="panel-list" class="api-panel active">
+      <h2>List Sessions</h2>
+      <div class="endpoint">POST /api/claude/v2/list</div>
+      <div class="row">
+        <div class="col">
+          <div class="input-group">
+            <label for="list-userId">userId:</label>
+            <input type="text" id="list-userId" placeholder="optional user ID">
+          </div>
+        </div>
+        <div class="col">
+          <div class="input-group">
+            <label for="list-appId">appId:</label>
+            <input type="text" id="list-appId" placeholder="optional app ID">
+          </div>
+        </div>
+      </div>
+      <button onclick="callApi('list')">List Sessions</button>
+      <div class="session-list" id="list-result"></div>
+      <div class="response" id="list-response"></div>
+    </div>
+
+    <div id="panel-listMysql" class="api-panel">
+      <h2>List Sessions from MySQL</h2>
+      <div class="endpoint">POST /api/claude/v2/listMysql</div>
+      <div class="row">
+        <div class="col">
+          <div class="input-group">
+            <label for="mysql-appId">appId:</label>
+            <input type="text" id="mysql-appId" placeholder="app ID (optional)">
+          </div>
+        </div>
+        <div class="col">
+          <div class="input-group">
+            <label for="mysql-userId">userId:</label>
+            <input type="text" id="mysql-userId" placeholder="user ID (optional)">
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <div class="input-group">
+            <label for="mysql-sessionId">sessionId:</label>
+            <input type="text" id="mysql-sessionId" placeholder="session ID (optional)">
+          </div>
+        </div>
+        <div class="col">
+          <div class="input-group">
+            <label for="mysql-sessionTitle">sessionTitle:</label>
+            <input type="text" id="mysql-sessionTitle" placeholder="session title (optional)">
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <div class="input-group">
+            <label for="mysql-sessionStatus">sessionStatus:</label>
+            <input type="text" id="mysql-sessionStatus" placeholder="e.g., active, created (optional)">
+          </div>
+        </div>
+        <div class="col">
+          <div class="input-group">
+            <label for="mysql-userCwd">userCwd:</label>
+            <input type="text" id="mysql-userCwd" placeholder="user cwd (optional)">
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <div class="input-group">
+            <label for="mysql-createTimeStart">createTimeStart:</label>
+            <input type="datetime-local" id="mysql-createTimeStart" placeholder="start time">
+          </div>
+        </div>
+        <div class="col">
+          <div class="input-group">
+            <label for="mysql-createTimeEnd">createTimeEnd:</label>
+            <input type="datetime-local" id="mysql-createTimeEnd" placeholder="end time">
+          </div>
+        </div>
+      </div>
+      <button onclick="callApi('listMysql')">Search Sessions</button>
+      <div class="session-list" id="listMysql-result"></div>
+      <div class="response" id="listMysql-response"></div>
+    </div>
+
+    <div id="panel-get" class="api-panel">
+      <h2>Get Session</h2>
+      <div class="endpoint">POST /api/claude/v2/get</div>
+      <div class="input-group">
+        <label for="get-sessionId">sessionId:</label>
+        <input type="text" id="get-sessionId" placeholder="session ID (select from list or enter manually)">
+      </div>
+      <button onclick="callApi('get')">Get Session</button>
+      <div class="response" id="get-response"></div>
+    </div>
+
+    <div id="panel-create" class="api-panel">
+      <h2>Create Session</h2>
+      <div class="endpoint">POST /api/claude/v2/create</div>
+      <div class="row">
+        <div class="col">
+          <div class="input-group">
+            <label for="create-userId">userId:</label>
+            <input type="text" id="create-userId" placeholder="optional user ID">
+          </div>
+        </div>
+        <div class="col">
+          <div class="input-group">
+            <label for="create-appId">appId:</label>
+            <input type="text" id="create-appId" placeholder="optional app ID">
+          </div>
+        </div>
+      </div>
+      <div class="input-group">
+        <label for="create-name">name:</label>
+        <input type="text" id="create-name" placeholder="session name (optional)">
+      </div>
+      <button class="btn-success" onclick="callApi('create')">Create Session</button>
+      <div class="response" id="create-response"></div>
+    </div>
+
+    <div id="panel-sendMessage" class="api-panel">
+      <h2>Send Message</h2>
+      <div class="endpoint">POST /api/claude/v2/sendMessage</div>
+      <div class="input-group">
+        <label for="msg-sessionId">sessionId:</label>
+        <input type="text" id="msg-sessionId" placeholder="session ID">
+      </div>
+      <div class="input-group">
+        <label for="msg-userId">userId:</label>
+        <input type="text" id="msg-userId" placeholder="optional user ID">
+      </div>
+      <div class="input-group">
+        <label for="msg-text">text:</label>
+        <textarea id="msg-text" placeholder="message text"></textarea>
+      </div>
+      <div class="row">
+        <div class="col">
+          <div class="input-group">
+            <label for="msg-permissionMode">permissionMode:</label>
+            <select id="msg-permissionMode">
+              <option value="">default</option>
+              <option value="acceptAll">acceptAll</option>
+              <option value="denyAll">denyAll</option>
+            </select>
+          </div>
+        </div>
+        <div class="col">
+          <div class="input-group">
+            <label for="msg-maxTurns">maxTurns:</label>
+            <input type="number" id="msg-maxTurns" placeholder="max turns (optional)" value="10">
+          </div>
+        </div>
+      </div>
+      <div class="input-group">
+        <label for="msg-allowedTools">allowedTools (comma-separated):</label>
+        <input type="text" id="msg-allowedTools" placeholder="e.g., Bash,Read,Write">
+      </div>
+      <div class="input-group">
+        <label for="msg-disallowedTools">disallowedTools (comma-separated):</label>
+        <input type="text" id="msg-disallowedTools" placeholder="e.g., Edit">
+      </div>
+      <button onclick="callApi('sendMessage')">Send Message</button>
+      <div class="response" id="sendMessage-response"></div>
+    </div>
+
+    <div id="panel-sendMessageStream" class="api-panel">
+      <h2>Send Message Stream (SSE)</h2>
+      <div class="endpoint">POST /api/claude/v2/sendMessageStream</div>
+      <div class="input-group">
+        <label for="stream-sessionId">sessionId:</label>
+        <input type="text" id="stream-sessionId" placeholder="session ID (leave empty to create new)">
+      </div>
+      <div class="input-group">
+        <label for="stream-text">text:</label>
+        <textarea id="stream-text" placeholder="message text">Say hello in 3 words</textarea>
+      </div>
+      <button onclick="startStream()">Start Stream</button>
+      <button class="btn-danger" onclick="stopStream()">Stop Stream</button>
+      <div class="sse-output" id="stream-output"></div>
+      <div class="stats" id="stream-stats"></div>
+    </div>
+
+    <div id="panel-cancel" class="api-panel">
+      <h2>Cancel Session</h2>
+      <div class="endpoint">POST /api/claude/v2/cancel</div>
+      <div class="input-group">
+        <label for="cancel-sessionId">sessionId:</label>
+        <input type="text" id="cancel-sessionId" placeholder="session ID to cancel">
+      </div>
+      <button class="btn-warning" onclick="callApi('cancel')">Cancel Session</button>
+      <div class="response" id="cancel-response"></div>
+    </div>
+
+    <div id="panel-approval" class="api-panel">
+      <h2>Send Approval</h2>
+      <div class="endpoint">POST /api/claude/v2/approval</div>
+      <div class="input-group">
+        <label for="approval-sessionId">sessionId:</label>
+        <input type="text" id="approval-sessionId" placeholder="session ID">
+      </div>
+      <div class="input-group">
+        <label for="approval-approvalId">approvalId (from permission request):</label>
+        <input type="text" id="approval-approvalId" placeholder="approval/request ID">
+      </div>
+      <div class="input-group">
+        <label for="approval-action">action:</label>
+        <select id="approval-action">
+          <option value="approve">approve</option>
+          <option value="deny">deny</option>
+        </select>
+      </div>
+      <button onclick="callApi('approval')">Send Approval</button>
+      <div class="response" id="approval-response"></div>
+    </div>
+
+    <div id="panel-delete" class="api-panel">
+      <h2>Delete Session</h2>
+      <div class="endpoint">POST /api/claude/v2/delete</div>
+      <div class="input-group">
+        <label for="delete-sessionId">sessionId:</label>
+        <input type="text" id="delete-sessionId" placeholder="session ID to delete">
+      </div>
+      <button class="btn-danger" onclick="callApi('delete')">Delete Session</button>
+      <div class="response" id="delete-response"></div>
+    </div>
+
+    <div id="panel-searchFiles" class="api-panel">
+      <h2>Search Files</h2>
+      <div class="endpoint">POST /api/claude/v2/searchFiles</div>
+      <div class="input-group">
+        <label for="search-sessionId">sessionId:</label>
+        <input type="text" id="search-sessionId" placeholder="session ID">
+      </div>
+      <div class="input-group">
+        <label for="search-q">query (q):</label>
+        <input type="text" id="search-q" placeholder="search query">
+      </div>
+      <div class="input-group">
+        <label for="search-limit">limit:</label>
+        <input type="number" id="search-limit" placeholder="result limit" value="10">
+      </div>
+      <button onclick="callApi('searchFiles')">Search Files</button>
+      <div class="response" id="searchFiles-response"></div>
+    </div>
+
+    <div id="panel-updateTitle" class="api-panel">
+      <h2>Update Session Title</h2>
+      <div class="endpoint">POST /api/claude/v2/updateTitle</div>
+      <div class="input-group">
+        <label for="title-sessionId">sessionId:</label>
+        <input type="text" id="title-sessionId" placeholder="session ID">
+      </div>
+      <div class="input-group">
+        <label for="title-title">title:</label>
+        <input type="text" id="title-title" placeholder="new session title">
+      </div>
+      <button onclick="callApi('updateTitle')">Update Title</button>
+      <div class="response" id="updateTitle-response"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentEventSource = null;
+    let eventCount = 0;
+    let startTime = 0;
+    let currentSessionId = null;
+
+    function showApi(name) {
+      document.querySelectorAll('.api-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.api-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      document.querySelector(`.api-tab[onclick="showApi('${name}')"]`).classList.add('active');
+    }
+
+    function getResponseElement(apiName) {
+      return document.getElementById(apiName + '-response');
+    }
+
+    function showResponse(apiName, data, isError = false) {
+      const el = getResponseElement(apiName);
+      el.textContent = JSON.stringify(data, null, 2);
+      el.className = 'response ' + (isError ? 'error' : 'success');
+    }
+
+    async function callApi(apiName) {
+      const el = getResponseElement(apiName);
+      el.textContent = 'Loading...';
+      el.className = 'response';
+
+      let body = {};
+      let sessionId = '';
+
+      switch(apiName) {
+        case 'list':
+          body = {
+            userId: document.getElementById('list-userId').value || undefined,
+            appId: document.getElementById('list-appId').value || undefined
+          };
+          break;
+        case 'listMysql':
+          body = {
+            appId: document.getElementById('mysql-appId').value || undefined,
+            userId: document.getElementById('mysql-userId').value || undefined,
+            sessionId: document.getElementById('mysql-sessionId').value || undefined,
+            sessionTitle: document.getElementById('mysql-sessionTitle').value || undefined,
+            sessionStatus: document.getElementById('mysql-sessionStatus').value || undefined,
+            userCwd: document.getElementById('mysql-userCwd').value || undefined
+          };
+          const mysqlStartTime = document.getElementById('mysql-createTimeStart').value;
+          const mysqlEndTime = document.getElementById('mysql-createTimeEnd').value;
+          if (mysqlStartTime) body.createTimeStart = mysqlStartTime;
+          if (mysqlEndTime) body.createTimeEnd = mysqlEndTime;
+          break;
+        case 'get':
+          body = { sessionId: document.getElementById('get-sessionId').value };
+          sessionId = body.sessionId;
+          break;
+        case 'create':
+          body = {
+            userId: document.getElementById('create-userId').value || undefined,
+            appId: document.getElementById('create-appId').value || undefined,
+            name: document.getElementById('create-name').value || undefined
+          };
+          break;
+        case 'sendMessage':
+          body = {
+            sessionId: document.getElementById('msg-sessionId').value,
+            userId: document.getElementById('msg-userId').value || undefined,
+            text: document.getElementById('msg-text').value,
+            permissionMode: document.getElementById('msg-permissionMode').value || undefined,
+            maxTurns: document.getElementById('msg-maxTurns').value ? parseInt(document.getElementById('msg-maxTurns').value) : undefined,
+            allowedTools: document.getElementById('msg-allowedTools').value || undefined,
+            disallowedTools: document.getElementById('msg-disallowedTools').value || undefined
+          };
+          break;
+        case 'cancel':
+          body = { sessionId: document.getElementById('cancel-sessionId').value };
+          break;
+        case 'approval':
+          body = {
+            sessionId: document.getElementById('approval-sessionId').value,
+            approvalId: document.getElementById('approval-approvalId').value || undefined,
+            action: document.getElementById('approval-action').value
+          };
+          break;
+        case 'delete':
+          body = { sessionId: document.getElementById('delete-sessionId').value };
+          break;
+        case 'searchFiles':
+          body = {
+            sessionId: document.getElementById('search-sessionId').value,
+            q: document.getElementById('search-q').value || undefined,
+            limit: document.getElementById('search-limit').value ? parseInt(document.getElementById('search-limit').value) : undefined
+          };
+          break;
+        case 'updateTitle':
+          body = {
+            sessionId: document.getElementById('title-sessionId').value,
+            title: document.getElementById('title-title').value
+          };
+          break;
+      }
+
+      Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
+
+      try {
+        const response = await fetch('/api/claude/v2/' + apiName, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await response.json();
+
+        if (apiName === 'list' && data.code === 200 && data.data) {
+          displaySessionList(data.data);
+        }
+        if (apiName === 'listMysql' && data.code === 200 && data.data) {
+          displayMysqlSessionList(data.data);
+        }
+        if (apiName === 'create' && data.code === 200 && data.data && data.data.codexId) {
+          currentSessionId = data.data.codexId;
+          document.getElementById('msg-sessionId').value = currentSessionId;
+          document.getElementById('get-sessionId').value = currentSessionId;
+        }
+
+        showResponse(apiName, data, data.code !== 200);
+      } catch (error) {
+        showResponse(apiName, { error: error.message }, true);
+      }
+    }
+
+    function displaySessionList(sessions) {
+      const container = document.getElementById('list-result');
+      if (!sessions || sessions.length === 0) {
+        container.innerHTML = '<div style="color: #808080; padding: 12px;">No sessions found</div>';
+        return;
+      }
+
+      container.innerHTML = sessions.map(s => `
+        <div class="session-item" onclick="selectSession('${s.sessionId}', '${s.sessionTitle || 'Untitled'}')">
+          <div class="title">${s.sessionTitle || 'Untitled'}</div>
+          <div class="meta">ID: ${s.sessionId} | Status: ${s.sessionStatus} | Created: ${s.createTime || 'unknown'}</div>
+        </div>
+      `).join('');
+    }
+
+    function displayMysqlSessionList(sessions) {
+      const container = document.getElementById('listMysql-result');
+      if (!sessions || sessions.length === 0) {
+        container.innerHTML = '<div style="color: #808080; padding: 12px;">No sessions found</div>';
+        return;
+      }
+
+      container.innerHTML = sessions.map(s => `
+        <div class="session-item" onclick="selectMysqlSession('${s.sessionId}', '${s.sessionTitle || 'Untitled'}')">
+          <div class="title">${s.sessionTitle || 'Untitled'}</div>
+          <div class="meta">appId: ${s.appId || ''} | userId: ${s.userId || ''} | Status: ${s.sessionStatus || ''}</div>
+          <div class="meta">userCwd: ${s.userCwd || ''}</div>
+          <div class="meta">Created: ${s.createTime || 'unknown'}</div>
+        </div>
+      `).join('');
+    }
+
+    function selectMysqlSession(sessionId, title) {
+      selectSession(sessionId, title);
+    }
+
+    function selectSession(sessionId, title) {
+      currentSessionId = sessionId;
+      document.querySelectorAll('.session-item').forEach(el => el.classList.remove('selected'));
+      event.target.closest('.session-item').classList.add('selected');
+
+      document.getElementById('get-sessionId').value = sessionId;
+      document.getElementById('msg-sessionId').value = sessionId;
+      document.getElementById('cancel-sessionId').value = sessionId;
+      document.getElementById('approval-sessionId').value = sessionId;
+      document.getElementById('delete-sessionId').value = sessionId;
+      document.getElementById('search-sessionId').value = sessionId;
+      document.getElementById('title-sessionId').value = sessionId;
+      document.getElementById('stream-sessionId').value = sessionId;
+    }
+
+    function startStream() {
+      if (currentEventSource) {
+        stopStream();
+      }
+
+      const sessionId = document.getElementById('stream-sessionId').value;
+      const text = document.getElementById('stream-text').value;
+
+      if (!text) {
+        alert('Please enter a message');
+        return;
+      }
+
+      const output = document.getElementById('stream-output');
+      output.innerHTML = '';
+      eventCount = 0;
+      startTime = Date.now();
+
+      const body = { text };
+      if (sessionId) body.sessionId = sessionId;
+
+      fetch('/api/claude/v2/sendMessageStream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(response => {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        function read() {
+          reader.read().then(({ done, value }) => {
+            if (done) return;
+
+            const text = decoder.decode(value);
+            const lines = text.split('\n');
+
+            lines.forEach(line => {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.substring(6));
+                  logSSE(data);
+                } catch (e) {
+                  if (line.substring(6).trim()) {
+                    logSSE({ raw: line.substring(6) });
+                  }
+                }
+              }
+            });
+
+            read();
+          });
+        }
+
+        read();
+      }).catch(error => {
+        logSSE({ error: error.message, method: 'fetch-error' });
+      });
+    }
+
+    function stopStream() {
+      if (currentEventSource) {
+        currentEventSource.close();
+        currentEventSource = null;
+      }
+      if (currentEventSource instanceof EventSource) {
+        currentEventSource.close();
+      }
+    }
+
+    function logSSE(data) {
+      const output = document.getElementById('stream-output');
+      const div = document.createElement('div');
+      div.className = 'event';
+
+      const method = data.method || data.type || '';
+      if (method) {
+        div.classList.add(method.replace(/\//g, '\\/'));
+      }
+
+      if (method === 'stream_delta' || data.content) {
+        div.textContent = (data.content || data.text || '') + '\n';
+        div.style.color = '#22c55e';
+      } else {
+        div.textContent = JSON.stringify(data, null, 2);
+      }
+
+      output.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+
+      eventCount++;
+      updateStreamStats();
+
+      if (method === 'complete' || method === 'error' || data.timeout) {
+        setTimeout(() => {
+          logSSE({ method: '--- Stream Ended ---' });
+        }, 100);
+      }
+    }
+
+    function updateStreamStats() {
+      const elapsed = Date.now() - startTime;
+      const stats = document.getElementById('stream-stats');
+      stats.textContent = `Events: ${eventCount} | Elapsed: ${(elapsed / 1000).toFixed(1)}s`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      callApi('list');
+    });
+  </script>
+</body>
+</html>

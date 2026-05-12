@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.claude.web.mapper.AiSessionMapper">
+    <resultMap id="BaseResultMap" type="com.claude.web.entity.AiSession">
+        <id column="session_id" property="sessionId"/>
+        <result column="app_id" property="appId"/>
+        <result column="user_id" property="userId"/>
+        <result column="user_cwd" property="userCwd"/>
+        <result column="session_title" property="sessionTitle"/>
+        <result column="session_status" property="sessionStatus"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <select id="selectByAppIdAndUserId" resultMap="BaseResultMap">
+        SELECT * FROM t_ai_sessions
+        WHERE app_id = #{appId}
+        <if test="userId != null">
+            AND user_id = #{userId}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectBySessionId" resultMap="BaseResultMap">
+        SELECT * FROM t_ai_sessions WHERE session_id = #{sessionId}
+    </select>
+
+    <select id="selectLatestByUserId" resultMap="BaseResultMap">
+        SELECT * FROM t_ai_sessions
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
+
+    <select id="searchSessions" resultMap="BaseResultMap">
+        SELECT * FROM t_ai_sessions WHERE 1=1
+        <if test="appId != null and appId != ''">
+            AND app_id = #{appId}
+        </if>
+        <if test="userId != null and userId != ''">
+            AND user_id = #{userId}
+        </if>
+        <if test="userCwd != null and userCwd != ''">
+            AND user_cwd = #{userCwd}
+        </if>
+        <if test="sessionId != null and sessionId != ''">
+            AND session_id = #{sessionId}
+        </if>
+        <if test="sessionTitle != null and sessionTitle != ''">
+            AND session_title = #{sessionTitle}
+        </if>
+        <if test="sessionStatus != null and sessionStatus != ''">
+            AND session_status = #{sessionStatus}
+        </if>
+        <if test="createTimeStart != null">
+            AND create_time &gt;= #{createTimeStart}
+        </if>
+        <if test="createTimeEnd != null">
+            AND create_time &lt;= #{createTimeEnd}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <insert id="insert" parameterType="com.claude.web.entity.AiSession">
+        INSERT INTO t_ai_sessions (app_id, user_id, user_cwd, session_id, session_title, session_status)
+        VALUES (#{appId}, #{userId}, #{userCwd}, #{sessionId}, #{sessionTitle}, #{sessionStatus})
+    </insert>
+
+    <update id="update" parameterType="com.claude.web.entity.AiSession">
+        UPDATE t_ai_sessions
+        SET session_title = #{sessionTitle},
+            session_status = #{sessionStatus},
+            user_cwd = #{userCwd}
+        WHERE session_id = #{sessionId}
+    </update>
+
+    <delete id="deleteBySessionId">
+        DELETE FROM t_ai_sessions WHERE session_id = #{sessionId}
+    </delete>
+</mapper>

@@ -1,14 +1,16 @@
 package com.claude.web.service;
 
-import com.claude.web.dto.NotificationEvent;
+import java.time.Duration;
+import java.util.function.Consumer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import com.claude.web.dto.NotificationEvent;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
-
-import java.time.Duration;
-import java.util.function.Consumer;
 
 @Service
 public class SseEventService {
@@ -22,7 +24,7 @@ public class SseEventService {
     }
 
     public Flux<NotificationEvent> createEventStream() {
-        Sinks.Many<NotificationEvent> sink = Sinks.many().multicast().onBackpressureBuffer();
+        Sinks.Many<NotificationEvent> sink = Sinks.many().multicast().directBestEffort();
 
         Consumer<NotificationEvent> listener = event -> {
             Sinks.EmitResult result = sink.tryEmitNext(event);
@@ -44,6 +46,10 @@ public class SseEventService {
                 sink.asFlux(),
                 keepAlive
             )
+            .doOnCancel(() -> {
+                appServerProcess.removeNotificationListener(listener);
+                logger.debug("SSE connection closed");
+            })
             .doFinally(signal -> {
                 appServerProcess.removeNotificationListener(listener);
                 logger.debug("SSE connection closed: {}", signal);

@@ -12,4 +12,9 @@ public class SpaController {
         model.addAttribute("hideDropdowns", true);
         return "index";
     }
+
+    @GetMapping("/session-api-test")
+    public String sessionApiTest() {
+        return "session-api-test";
+    }
 }

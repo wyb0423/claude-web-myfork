@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.claude.web.mapper.AiAppMapper">
+    <resultMap id="BaseResultMap" type="com.claude.web.entity.AiApp">
+        <id column="app_id" property="appId"/>
+        <result column="access_take" property="accessTake"/>
+        <result column="serve_type" property="serveType"/>
+        <result column="serve_ip" property="serveIp"/>
+        <result column="serve_port" property="servePort"/>
+    </resultMap>
+
+    <select id="selectByAppId" resultMap="BaseResultMap">
+        SELECT * FROM t_ai_apps WHERE app_id = #{appId}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM t_ai_apps
+    </select>
+
+    <insert id="insert" parameterType="com.claude.web.entity.AiApp">
+        INSERT INTO t_ai_apps (app_id, access_take, serve_type, serve_ip, serve_port)
+        VALUES (#{appId}, #{accessTake}, #{serveType}, #{serveIp}, #{servePort})
+    </insert>
+
+    <update id="update" parameterType="com.claude.web.entity.AiApp">
+        UPDATE t_ai_apps
+        SET access_take = #{accessTake},
+            serve_type = #{serveType},
+            serve_ip = #{serveIp},
+            serve_port = #{servePort}
+        WHERE app_id = #{appId}
+    </update>
+
+    <delete id="deleteByAppId">
+        DELETE FROM t_ai_apps WHERE app_id = #{appId}
+    </delete>
+</mapper>

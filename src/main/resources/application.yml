@@ -1,5 +1,5 @@
 server:
-  port: ${PORT:3000}
+  port: 8080
 
 spring:
   application:
@@ -8,19 +8,32 @@ spring:
     resources:
       cache:
         period: 0
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/codex?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.claude.web.entity
+  configuration:
+    map-underscore-to-camel-case: true
 
 claude:
+  model: GLM-4.7-AWQ
   web:
-    password: ${CLAUDE_PASSWORD:}
-    password-enabled: ${CLAUDE_PASSWORD_ENABLED:false}
-    auto-approve: ${CLAUDE_AUTO_APPROVE:false}
+    password: 111
+    password-enabled: true
+    auto-approve: true
     claude-agent:
-      host: ${CLAUDE_AGENT_HOST:127.0.0.1}
-      port: ${CLAUDE_AGENT_PORT:8011}
-      api-key: ${CLAUDE_AGENT_API_KEY:}
-      connection-timeout: ${CLAUDE_AGENT_CONNECTION_TIMEOUT:30000}
+      host: 127.0.0.1
+      port: 8010
+      api-key: 204e28ff45370960b6649057352f00c96a60c34ad9fa47defed2436a3e5762c29761a078fbd183b1ea831d048d48736986ecfbf28999ac0369ab7c8f639f0b0d
+      connection-timeout: 30000
 
 logging:
+  config: classpath:logback-spring.xml
   level:
     com.claude.web: INFO
     org.springframework.security: INFO

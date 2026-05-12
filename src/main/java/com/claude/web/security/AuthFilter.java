@@ -18,8 +18,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Component
-@Order(1)
+//@Component
+//@Order(1)
 public class AuthFilter implements Filter {
     
     private static final Logger logger = LoggerFactory.getLogger(AuthFilter.class);
