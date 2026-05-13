@@ -116,11 +116,14 @@
           const items = turn.items || [];
           for (const item of items) {
             if (item.type === 'agentMessage') {
+              const prev = msgs[msgs.length - 1];
+              if (!prev || prev.role !== 'thinking') {
+                msgs.push({ id: item.id + '_think', role: 'thinking', text: '（模型未返回思考内容）', messageType: 'thinkingMessage' });
+              }
               msgs.push({ id: item.id, role: 'assistant', text: item.text || '', messageType: item.type });
             } else if (item.type === 'thinkingMessage') {
-              if (item.text && item.text.trim()) {
-                msgs.push({ id: item.id, role: 'thinking', text: item.text || '', messageType: item.type });
-              }
+              const text = item.text && item.text.trim() ? item.text : '（模型未返回思考内容）';
+              msgs.push({ id: item.id, role: 'thinking', text, messageType: item.type });
             } else if (item.type === 'userMessage') {
               const content = Array.isArray(item.content) ? item.content : [];
               const textChunks = [], images = [];

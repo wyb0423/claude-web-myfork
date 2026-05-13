@@ -144,9 +144,13 @@
       function appendStreamingContent(content) {
         const list = els.conversationList;
         if (!state.selectedThreadId) return;
-        // Find or create assistant message
         let lastMsg = state.messages[state.messages.length - 1];
         if (!lastMsg || lastMsg.role !== 'assistant') {
+          // Insert placeholder thinking card if no thinking arrived before this assistant message
+          if (!lastMsg || lastMsg.role !== 'thinking') {
+            const placeholder = { id: 'th_' + Date.now(), role: 'thinking', text: '（模型未返回思考内容）', messageType: 'thinkingMessage', streaming: true };
+            state.messages.push(placeholder);
+          }
           lastMsg = { id: 'a_' + Date.now(), role: 'assistant', text: '', messageType: 'agentMessage' };
           state.messages.push(lastMsg);
         }
