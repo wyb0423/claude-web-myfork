@@ -211,8 +211,10 @@
             html += '<li class="conversation-item"><div class="worked-separator">' + escapeHtml(m.text) + '</div></li>'; continue;
           }
           if (m.role === 'thinking') {
+            const isStreaming = !!(m.streaming);
+            const expandedClass = isStreaming ? ' expanded' : '';
             html += '<li class="conversation-item">';
-            html += '<div class="thinking-card">';
+            html += '<div class="thinking-card' + expandedClass + '">';
             html += '<div class="thinking-header">思考过程</div>';
             html += '<div class="thinking-body">' + escapeHtml(m.text) + '</div>';
             html += '</div></li>';

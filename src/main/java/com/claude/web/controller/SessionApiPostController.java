@@ -1093,19 +1093,19 @@ public class SessionApiPostController {
             } else if ("assistant".equals(type)) {
                 String text = extractTextFromContent(message);
                 String thinking = extractThinkingFromContent(message);
-                if (text != null && !text.isEmpty()) {
-                    Map<String, Object> assistantMsg = new HashMap<>();
-                    assistantMsg.put("role", "assistant");
-                    assistantMsg.put("id", uuid);
-                    assistantMsg.put("text", text);
-                    result.add(assistantMsg);
-                }
                 if (thinking != null && !thinking.isEmpty()) {
                     Map<String, Object> thinkMsg = new HashMap<>();
                     thinkMsg.put("role", "thinking");
                     thinkMsg.put("id", uuid + "_think");
                     thinkMsg.put("text", thinking);
                     result.add(thinkMsg);
+                }
+                if (text != null && !text.isEmpty()) {
+                    Map<String, Object> assistantMsg = new HashMap<>();
+                    assistantMsg.put("role", "assistant");
+                    assistantMsg.put("id", uuid);
+                    assistantMsg.put("text", text);
+                    result.add(assistantMsg);
                 }
             }
         }

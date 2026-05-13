@@ -157,7 +157,7 @@
         if (!state.selectedThreadId) return;
         let lastMsg = state.messages[state.messages.length - 1];
         if (!lastMsg || lastMsg.role !== 'thinking') {
-          lastMsg = { id: 'th_' + Date.now(), role: 'thinking', text: '', messageType: 'thinkingMessage' };
+          lastMsg = { id: 'th_' + Date.now(), role: 'thinking', text: '', messageType: 'thinkingMessage', streaming: true };
           state.messages.push(lastMsg);
         }
         lastMsg.text += content;
