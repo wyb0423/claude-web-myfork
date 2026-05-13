@@ -118,8 +118,9 @@
             if (item.type === 'agentMessage') {
               msgs.push({ id: item.id, role: 'assistant', text: item.text || '', messageType: item.type });
             } else if (item.type === 'thinkingMessage') {
-              // Skip thinking content — not shown in the conversation UI.
-              continue;
+              if (item.text && item.text.trim()) {
+                msgs.push({ id: item.id, role: 'thinking', text: item.text || '', messageType: item.type });
+              }
             } else if (item.type === 'userMessage') {
               const content = Array.isArray(item.content) ? item.content : [];
               const textChunks = [], images = [];

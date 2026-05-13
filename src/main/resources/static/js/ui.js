@@ -210,8 +210,14 @@
           if (m.messageType === 'worked') {
             html += '<li class="conversation-item"><div class="worked-separator">' + escapeHtml(m.text) + '</div></li>'; continue;
           }
-          // Skip thinking content — not shown in the conversation UI.
-          if (m.role === 'thinking') continue;
+          if (m.role === 'thinking') {
+            html += '<li class="conversation-item">';
+            html += '<div class="thinking-card">';
+            html += '<div class="thinking-header">思考过程</div>';
+            html += '<div class="thinking-body">' + escapeHtml(m.text) + '</div>';
+            html += '</div></li>';
+            continue;
+          }
           // Skip empty messages (e.g. permission/tool responses with no visible content).
           const hasText = !!(m.text && m.text.trim().length);
           const hasImages = !!(m.images && m.images.length);
@@ -421,6 +427,11 @@
         els.conversationList.addEventListener('click', e => {
           const btn = e.target.closest('button');
           if (!btn) {
+            const thinkingHeader = e.target.closest('.thinking-header');
+            if (thinkingHeader) {
+              thinkingHeader.closest('.thinking-card').classList.toggle('expanded');
+              return;
+            }
             const img = e.target.closest('img[data-action="open-image"]');
             if (img) openImageModal(img.src);
             return;

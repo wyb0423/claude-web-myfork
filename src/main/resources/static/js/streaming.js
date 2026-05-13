@@ -80,7 +80,7 @@
         if (type === 'thinking') {
           const content = params.content || '';
           if (sessionId === state.selectedThreadId) {
-            updateLiveOverlayText(content);
+            appendThinkingContent(content);
           }
           return;
         }
@@ -153,12 +153,15 @@
         lastMsg.text += content;
         renderConversation();
       }
-      function updateLiveOverlayText(text) {
-        if (!state.liveOverlay) {
-          state.liveOverlay = { activityLabel: '思考中…', reasoningText: text, errorText: '' };
-        } else {
-          state.liveOverlay.reasoningText = text;
+      function appendThinkingContent(content) {
+        if (!state.selectedThreadId) return;
+        let lastMsg = state.messages[state.messages.length - 1];
+        if (!lastMsg || lastMsg.role !== 'thinking') {
+          lastMsg = { id: 'th_' + Date.now(), role: 'thinking', text: '', messageType: 'thinkingMessage' };
+          state.messages.push(lastMsg);
         }
+        lastMsg.text += content;
+        renderConversation();
       }
       function appendToolUse(toolName, toolInput) {
         const toolText = `\n\n**Using tool:** \`${toolName}\`\n`;
