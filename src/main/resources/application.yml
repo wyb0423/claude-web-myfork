@@ -27,7 +27,7 @@ claude:
     password-enabled: true
     auto-approve: true
     claude-agent:
-      host: 127.0.0.1
+      host: 47.116.75.73
       port: 8010
       api-key: 204e28ff45370960b6649057352f00c96a60c34ad9fa47defed2436a3e5762c29761a078fbd183b1ea831d048d48736986ecfbf28999ac0369ab7c8f639f0b0d
       connection-timeout: 30000
