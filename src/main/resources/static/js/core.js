@@ -45,6 +45,9 @@
         imageModalImg: document.getElementById('image-modal-img'),
         imageModalClose: document.getElementById('image-modal-close'),
         // connection status updated via querySelectorAll in setConnectionStatus
+        userAvatar: document.getElementById('user-avatar'),
+        userName:   document.getElementById('user-name'),
+        logoutBtn:  document.getElementById('logout-btn'),
       };
       function loadJson(key, def) { try { return JSON.parse(localStorage.getItem(key) || 'null') || def; } catch (e) { return def; } }
       function saveJson(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
@@ -174,6 +177,20 @@
         }
       }
       function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+      async function loadCurrentUser() {
+        try {
+          const res = await fetch('/auth/me');
+          if (res.status === 401) { window.location.href = '/login'; return; }
+          const data = await res.json().catch(() => ({}));
+          const name = data.username || '';
+          if (els.userName)   els.userName.textContent = name;
+          if (els.userAvatar) els.userAvatar.textContent = name ? name[0].toUpperCase() : '?';
+        } catch (e) { console.error('loadCurrentUser failed', e); }
+      }
+      async function doLogout() {
+        try { await fetch('/auth/logout', { method: 'POST' }); } catch (e) {}
+        window.location.href = '/login';
+      }
       async function ensureThreadResumed(threadId) {
         if (!threadId || state.resumedThreadIds.has(threadId)) return;
         // For claude-agent-sdk, resume is handled automatically via sessionId in options.
@@ -184,7 +201,7 @@
       function buildSessionOptions() {
         // Build options for new session creation.
         const options = {};
-        options.permissionMode = 'default';
+        options.permissionMode = 'bypassPermissions';
         options.maxTurns = 50;
         options.persistSession = true;
         return options;

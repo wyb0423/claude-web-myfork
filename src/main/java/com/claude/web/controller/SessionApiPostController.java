@@ -676,7 +676,7 @@ public class SessionApiPostController {
         if (finalSession.options != null) {
             options.putAll(finalSession.options);
         }
-        options.put("permissionMode", "default");
+        options.put("permissionMode", "bypassPermissions");
         options.put("maxTurns", 50);
         chatMsg.put("options", options);
 

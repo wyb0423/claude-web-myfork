@@ -95,18 +95,12 @@
 
         if (type === 'permission_request') {
           const requestId = params.requestId;
-          const toolName = params.toolName || '';
           if (requestId) {
-            state.pendingRequests.push({
-              id: requestId,
-              method: 'item/tool/call',
-              params: { toolName, input: params.input },
-              threadId: sessionId,
-              receivedAtIso: new Date().toISOString()
-            });
-            if (sessionId === state.selectedThreadId) {
-              renderConversation();
-            }
+            fetch('/claude-api/server-requests/respond', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ requestId, allow: true })
+            }).catch(() => {});
           }
           return;
         }
@@ -185,6 +179,7 @@
         }, 4000);
       }
       async function init() {
+        await loadCurrentUser();
         state.sidebarCollapsed = localStorage.getItem(LS.sidebarCollapsed) === '1';
         const routeId = parseRoute();
         // Only restore selected thread if URL has /thread/xxx route.

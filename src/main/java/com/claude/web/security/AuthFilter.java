@@ -1,153 +1,91 @@
 package com.claude.web.security;
 
-import com.claude.web.config.ClaudeProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.*;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
-//@Component
-//@Order(1)
+/**
+ * 认证过滤器：所有请求先经此处校验 cookie 令牌。
+ * - 公开路径直接放行
+ * - API 路径未认证 → 返回 401 JSON
+ * - 页面路径未认证 → 重定向到 /login
+ */
+@Component
+@Order(1)
 public class AuthFilter implements Filter {
-    
-    private static final Logger logger = LoggerFactory.getLogger(AuthFilter.class);
-    private static final String TOKEN_COOKIE = "claude_web_token";
-    private static final String LOGIN_PATH = "/auth/login";
-    private static final SecureRandom secureRandom = new SecureRandom();
-    
-    private final ClaudeProperties properties;
-    private final ObjectMapper objectMapper;
-    private final Set<String> validTokens = ConcurrentHashMap.newKeySet();
-    
-    public AuthFilter(ClaudeProperties properties, ObjectMapper objectMapper) {
-        this.properties = properties;
+
+    public static final String TOKEN_COOKIE   = "claude_web_token";
+    public static final String CURRENT_USER   = "currentUser";
+
+    private final SessionStore   sessionStore;
+    private final ObjectMapper   objectMapper;
+
+    public AuthFilter(SessionStore sessionStore, ObjectMapper objectMapper) {
+        this.sessionStore = sessionStore;
         this.objectMapper = objectMapper;
     }
-    
+
     @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
             throws IOException, ServletException {
-        
-        HttpServletRequest httpRequest = (HttpServletRequest) request;
-        HttpServletResponse httpResponse = (HttpServletResponse) response;
-        
-        String path = httpRequest.getRequestURI();
-        String method = httpRequest.getMethod();
-        
-        // If auth is disabled, proceed
-        if (!properties.isAuthEnabled()) {
-            chain.doFilter(request, response);
-            return;
-        }
-        
-        // Allow login page through
-        if ("/login".equals(path)) {
-            chain.doFilter(request, response);
+
+        HttpServletRequest  request  = (HttpServletRequest)  req;
+        HttpServletResponse response = (HttpServletResponse) res;
+        String path = request.getRequestURI();
+
+        if (isPublic(path)) {
+            chain.doFilter(req, res);
             return;
         }
 
-        // Handle login POST
-        if ("POST".equalsIgnoreCase(method) && LOGIN_PATH.equals(path)) {
-            handleLogin(httpRequest, httpResponse);
+        String token = extractToken(request);
+        SessionStore.UserSession session = sessionStore.getSession(token);
+
+        if (session != null) {
+            request.setAttribute(CURRENT_USER, session);
+            chain.doFilter(req, res);
             return;
         }
 
-        // Check for valid token
-        String token = getTokenFromCookie(httpRequest);
-        if (token != null && validTokens.contains(token)) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        // API requests return 401
-        if (path.startsWith("/claude-api/") || path.startsWith("/api/")) {
-            httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            httpResponse.setContentType("application/json");
-            objectMapper.writeValue(httpResponse.getWriter(), Map.of("error", "Unauthorized"));
-            return;
-        }
-
-        // Redirect to login page for other requests
-        httpResponse.sendRedirect("/login");
-    }
-    
-    private void handleLogin(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        LoginRequest loginRequest = objectMapper.readValue(request.getInputStream(), LoginRequest.class);
-        
-        if (loginRequest == null || loginRequest.password() == null) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.setContentType("application/json");
-            objectMapper.writeValue(response.getWriter(), Map.of("error", "Invalid request"));
-            return;
-        }
-        
-        if (!constantTimeCompare(loginRequest.password(), properties.getPassword())) {
+        if (isApi(path)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            objectMapper.writeValue(response.getWriter(), Map.of("error", "Invalid password"));
-            return;
+            response.setContentType("application/json;charset=UTF-8");
+            objectMapper.writeValue(response.getWriter(),
+                    Map.of("error", "Unauthorized", "code", 401));
+        } else {
+            response.sendRedirect("/login");
         }
-        
-        // Generate token
-        String token = generateToken();
-        validTokens.add(token);
-        
-        // Set cookie
-        Cookie cookie = new Cookie(TOKEN_COOKIE, token);
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false); // Set to true in production with HTTPS
-        cookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
-        response.addCookie(cookie);
-        
-        response.setContentType("application/json");
-        objectMapper.writeValue(response.getWriter(), Map.of("ok", true));
     }
-    
-    private String getTokenFromCookie(HttpServletRequest request) {
+
+    private boolean isPublic(String path) {
+        return "/login".equals(path)
+            || "/auth/login".equals(path)
+            || "/auth/logout".equals(path)
+            || path.startsWith("/css/")
+            || path.startsWith("/js/")
+            || path.startsWith("/static/")
+            || path.startsWith("/favicon");
+    }
+
+    private boolean isApi(String path) {
+        return path.startsWith("/api/")
+            || path.startsWith("/claude-api/")
+            || path.startsWith("/auth/");
+    }
+
+    public static String extractToken(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null) return null;
-        
-        for (Cookie cookie : cookies) {
-            if (TOKEN_COOKIE.equals(cookie.getName())) {
-                return cookie.getValue();
-            }
+        for (Cookie c : cookies) {
+            if (TOKEN_COOKIE.equals(c.getName())) return c.getValue();
         }
         return null;
     }
-    
-    private String generateToken() {
-        byte[] bytes = new byte[32];
-        secureRandom.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-    
-    private boolean constantTimeCompare(String a, String b) {
-        if (a == null || b == null) return false;
-        if (a.length() != b.length()) return false;
-        
-        int result = 0;
-        for (int i = 0; i < a.length(); i++) {
-            result |= a.charAt(i) ^ b.charAt(i);
-        }
-        return result == 0;
-    }
-    
-    public void invalidateToken(String token) {
-        validTokens.remove(token);
-    }
-
-    private record LoginRequest(String password) {}
 }

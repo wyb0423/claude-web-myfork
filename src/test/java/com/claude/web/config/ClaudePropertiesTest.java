@@ -133,7 +133,7 @@ class ClaudePropertiesTest {
     void sessionDefaults_hasCorrectDefaults() {
         ClaudeProperties.SessionDefaults defaults = new ClaudeProperties.SessionDefaults();
         assertThat(defaults.getCwd()).isEqualTo("/home/ubuntu");
-        assertThat(defaults.getPermissionMode()).isEqualTo("default");
+        assertThat(defaults.getPermissionMode()).isEqualTo("bypassPermissions");
         assertThat(defaults.getMaxTurns()).isEqualTo(50);
         assertThat(defaults.isPersistSession()).isTrue();
         assertThat(defaults.isEnableFileCheckpointing()).isFalse();

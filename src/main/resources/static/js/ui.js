@@ -403,6 +403,7 @@
         els.threadComposer.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleThreadSendClick(); } });
         els.imageModalClose.addEventListener('click', closeImageModal);
         els.imageModal.addEventListener('click', e => { if (e.target === els.imageModal) closeImageModal(); });
+        if (els.logoutBtn) els.logoutBtn.addEventListener('click', doLogout);
 
         document.addEventListener('click', e => {
           const menu = document.querySelector('.context-menu');

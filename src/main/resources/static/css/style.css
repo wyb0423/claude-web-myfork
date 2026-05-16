@@ -246,4 +246,25 @@
     }
     .connection-status.connected { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
     .connection-status.disconnected { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+    /* 用户信息栏（侧边栏底部） */
+    .user-bar {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .6rem .75rem;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+      flex-shrink: 0;
+    }
+    .user-avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: #2563eb; color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 700; flex-shrink: 0;
+    }
+    .user-name {
+      flex: 1; min-width: 0;
+      font-size: .875rem; font-weight: 500; color: #334155;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .user-logout-btn { flex-shrink: 0; font-size: .9rem; }
   </style>

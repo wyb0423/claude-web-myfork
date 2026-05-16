@@ -1,134 +1,131 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Claude Web &mdash; Login</title>
+  <title>Claude Web — 登录</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    *::before,
-    *::after {
-      box-sizing: border-box;
-    }
-
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #0a0a0a;
-      color: #e5e5e5;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 1rem;
+      background: #f1f5f9;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 1rem;
     }
-
     .card {
-      background: #171717;
-      border: 1px solid #262626;
-      border-radius: 12px;
-      padding: 2rem;
-      width: 100%;
-      max-width: 380px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 2.25rem 2rem;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
     }
-
-    h1 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-bottom: 1.5rem;
-      text-align: center;
-      color: #fafafa;
+    .logo {
+      display: flex; align-items: center; justify-content: center; gap: .6rem;
+      margin-bottom: 1.75rem;
     }
-
+    .logo-icon {
+      width: 36px; height: 36px; background: #2563eb; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 1.2rem; font-weight: 700;
+    }
+    .logo-text { font-size: 1.25rem; font-weight: 600; color: #0f172a; }
+    .field { margin-bottom: 1rem; }
     label {
-      display: block;
-      font-size: .875rem;
-      color: #a3a3a3;
-      margin-bottom: .5rem;
+      display: block; font-size: .875rem; font-weight: 500;
+      color: #374151; margin-bottom: .4rem;
     }
-
     input {
-      width: 100%;
-      padding: .625rem .75rem;
-      background: #0a0a0a;
-      border: 1px solid #404040;
-      border-radius: 8px;
-      color: #fafafa;
-      font-size: 1rem;
-      outline: none;
-      transition: border-color .15s;
+      width: 100%; padding: .6rem .75rem;
+      background: #f8fafc; border: 1px solid #cbd5e1;
+      border-radius: 8px; color: #1f2937; font-size: .9375rem;
+      outline: none; transition: border-color .15s, box-shadow .15s;
     }
-
     input:focus {
-      border-color: #3b82f6;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+      background: #fff;
     }
-
-    button {
-      width: 100%;
-      padding: .625rem;
-      margin-top: 1rem;
-      background: #3b82f6;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: .9375rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background .15s;
-    }
-
-    button:hover {
-      background: #2563eb;
-    }
-
-    .error {
-      color: #ef4444;
-      font-size: .8125rem;
+    .btn-login {
+      width: 100%; padding: .65rem;
       margin-top: .75rem;
-      text-align: center;
-      display: none;
+      background: #2563eb; color: #fff; border: none;
+      border-radius: 8px; font-size: .9375rem; font-weight: 500;
+      cursor: pointer; transition: background .15s;
+    }
+    .btn-login:hover { background: #1d4ed8; }
+    .btn-login:disabled { background: #93c5fd; cursor: not-allowed; }
+    .error {
+      display: none; margin-top: .75rem;
+      background: #fef2f2; border: 1px solid #fecaca;
+      color: #b91c1c; font-size: .875rem;
+      padding: .5rem .75rem; border-radius: 8px; text-align: center;
+    }
+    .hint {
+      margin-top: 1.25rem; font-size: .8rem; color: #94a3b8; text-align: center;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Claude Web</h1>
-    <form id="f">
-      <label for="pw">Password</label>
-      <input id="pw" name="password" type="password" autocomplete="current-password" autofocus required>
-      <button type="submit">Sign in</button>
-      <p class="error" id="err">Incorrect password</p>
+    <div class="logo">
+      <div class="logo-icon">C</div>
+      <span class="logo-text">Claude Web</span>
+    </div>
+    <form id="loginForm" autocomplete="on">
+      <div class="field">
+        <label for="username">用户名</label>
+        <input id="username" name="username" type="text"
+               autocomplete="username" autofocus required
+               placeholder="请输入用户名">
+      </div>
+      <div class="field">
+        <label for="password">密码</label>
+        <input id="password" name="password" type="password"
+               autocomplete="current-password" required
+               placeholder="请输入密码">
+      </div>
+      <button class="btn-login" type="submit" id="submitBtn">登 录</button>
+      <p class="error" id="errMsg"></p>
     </form>
+    <p class="hint">演示账号：admin / Admin@2024!&nbsp;&nbsp;或&nbsp;&nbsp;demo / Demo@2024!</p>
   </div>
 
   <script>
-    const form = document.getElementById('f');
-    const errEl = document.getElementById('err');
+    const form     = document.getElementById('loginForm');
+    const errMsg   = document.getElementById('errMsg');
+    const submitBtn = document.getElementById('submitBtn');
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      errEl.style.display = 'none';
+      errMsg.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = '登录中…';
 
-      const res = await fetch('/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          password: document.getElementById('pw').value
-        })
-      });
-
-      if (res.ok) {
-        window.location.href = '/';
-      } else {
-        errEl.style.display = 'block';
-        document.getElementById('pw').value = '';
-        document.getElementById('pw').focus();
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: document.getElementById('username').value.trim(),
+            password: document.getElementById('password').value
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          window.location.href = '/';
+        } else {
+          errMsg.textContent = data.error || '登录失败，请重试';
+          errMsg.style.display = 'block';
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
+        }
+      } catch (err) {
+        errMsg.textContent = '网络错误，请稍后重试';
+        errMsg.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '登 录';
       }
     });
   </script>
