@@ -17,8 +17,8 @@ import java.util.Map;
  * - API 路径未认证 → 返回 401 JSON
  * - 页面路径未认证 → 重定向到 /login
  */
-@Component
-@Order(1)
+//@Component
+//@Order(1)
 public class AuthFilter implements Filter {
 
     public static final String TOKEN_COOKIE   = "claude_web_token";
