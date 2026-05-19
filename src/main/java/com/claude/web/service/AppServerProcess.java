@@ -33,7 +33,7 @@ public class AppServerProcess {
     private final ObjectMapper objectMapper;
     private final ExecutorService executor;
     private final ScheduledExecutorService reconnectExecutor;
-    private final ClaudeTransport transport;
+    private volatile ClaudeTransport transport;
 
     private final AtomicInteger nextId = new AtomicInteger(1);
     private final Map<Integer, CompletableFuture<Object>> pendingRequests = new ConcurrentHashMap<>();
@@ -506,6 +506,46 @@ public class AppServerProcess {
 
     public String getTransportType() {
         return "claude-agent";
+    }
+
+    /**
+     * 运行时切换 Claude Agent 连接目标。
+     * 断开当前连接，创建新 Transport，重新建立连接。
+     */
+    public synchronized void switchAgent(String host, int port, String apiKey) throws Exception {
+        logger.info("Switching Claude Agent to {}:{}", host, port);
+
+        // 停止自动重连，避免干扰
+        stopping = true;
+        reconnecting.set(false);
+        if (reconnectTask != null && !reconnectTask.isDone()) {
+            reconnectTask.cancel(false);
+            reconnectTask = null;
+        }
+
+        // 销毁旧连接，并让所有待处理请求立即失败
+        cleanupTransport();
+        transport.dispose();
+        RuntimeException switchError = new RuntimeException("Agent switched");
+        pendingRequests.forEach((id, f) -> f.completeExceptionally(switchError));
+        pendingRequests.clear();
+        pendingRawRequests.forEach((id, f) -> f.completeExceptionally(switchError));
+        pendingRawRequests.clear();
+        pendingServerRequests.clear();
+        initialized = false;
+
+        // 更新内存中的配置
+        properties.getClaudeAgent().setHost(host);
+        properties.getClaudeAgent().setPort(port);
+        properties.getClaudeAgent().setApiKey(apiKey != null ? apiKey : "");
+
+        // 用新参数创建 Transport 并连接
+        int timeout = properties.getClaudeAgent().getConnectionTimeout();
+        transport = new ClaudeAgentTransport(host, port, apiKey != null ? apiKey : "", timeout);
+        stopping = false;
+
+        connectRemote();
+        logger.info("Successfully switched Claude Agent to {}:{}", host, port);
     }
 
     @PreDestroy

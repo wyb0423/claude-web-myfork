@@ -179,7 +179,7 @@
         }, 4000);
       }
       async function init() {
-        await loadCurrentUser();
+        // await loadCurrentUser();
         state.sidebarCollapsed = localStorage.getItem(LS.sidebarCollapsed) === '1';
         const routeId = parseRoute();
         // Only restore selected thread if URL has /thread/xxx route.

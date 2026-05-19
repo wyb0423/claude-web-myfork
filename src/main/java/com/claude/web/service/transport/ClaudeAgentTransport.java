@@ -48,6 +48,13 @@ public class ClaudeAgentTransport implements ClaudeTransport {
         this.httpClient = HttpClient.create();
     }
 
+    public ClaudeAgentTransport(String host, int port, String apiKey, int connectionTimeout) {
+        this.uri = "ws://" + host + ":" + port + "/";
+        this.apiKey = apiKey;
+        this.connectionTimeout = connectionTimeout;
+        this.httpClient = HttpClient.create();
+    }
+
     @Override
     public void connect() throws Exception {
         if (connected) {

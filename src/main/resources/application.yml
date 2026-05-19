@@ -30,7 +30,7 @@ file:
     dir: ./uploads
 
 claude:
-  model: kimi-for-coding
+  model: GLM-4.7-AWQ
   web:
     password: 111
     password-enabled: true
