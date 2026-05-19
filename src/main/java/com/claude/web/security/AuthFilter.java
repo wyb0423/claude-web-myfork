@@ -38,6 +38,14 @@ public class AuthFilter implements Filter {
 
         HttpServletRequest  request  = (HttpServletRequest)  req;
         HttpServletResponse response = (HttpServletResponse) res;
+
+        // AUTH DISABLED: 跳过认证，注入默认用户后放行所有请求
+        // 如需恢复认证，注释掉下面两行并取消注释下方代码块
+        request.setAttribute(CURRENT_USER, new SessionStore.UserSession(
+                0L, "admin", "admin", java.time.Instant.now().plusSeconds(86400L * 365)));
+        chain.doFilter(req, res);
+
+        /* --- AUTH DISABLED BEGIN ---
         String path = request.getRequestURI();
 
         if (isPublic(path)) {
@@ -62,6 +70,7 @@ public class AuthFilter implements Filter {
         } else {
             response.sendRedirect("/login");
         }
+        --- AUTH DISABLED END --- */
     }
 
     private boolean isPublic(String path) {

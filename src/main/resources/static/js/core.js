@@ -180,7 +180,8 @@
       async function loadCurrentUser() {
         try {
           const res = await fetch('/auth/me');
-          if (res.status === 401) { window.location.href = '/login'; return; }
+          // AUTH DISABLED: 不再因 401 跳转登录页
+          // if (res.status === 401) { window.location.href = '/login'; return; }
           const data = await res.json().catch(() => ({}));
           const name = data.username || '';
           if (els.userName)   els.userName.textContent = name;
@@ -189,7 +190,8 @@
       }
       async function doLogout() {
         try { await fetch('/auth/logout', { method: 'POST' }); } catch (e) {}
-        window.location.href = '/login';
+        // AUTH DISABLED: 不再跳转登录页
+        // window.location.href = '/login';
       }
       async function ensureThreadResumed(threadId) {
         if (!threadId || state.resumedThreadIds.has(threadId)) return;
